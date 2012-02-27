@@ -328,7 +328,7 @@ Function Join-ImportToExportAttributeFlow
 		foreach ($iafRule in $IAF)
 		{
 		    ### Look for a corresponding EAF rule    
-		    $eafMatches = @($EAF | where {$_.'MV Attribute' -contains $iafRule.'MV Attribute' -and $_.'MV Object Type' -eq $iafRule.'MV Object Type'})
+		    $eafMatches = @($EAF | where {$_.'MVAttribute' -contains $iafRule.'MVAttribute' -and $_.'MVObjectType' -eq $iafRule.'MVObjectType'})
 
 			### There may be multiple EAF rule for each IAF rules
 		    if ($eafMatches.count -gt 0)

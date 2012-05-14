@@ -531,7 +531,7 @@ Function Get-FimObjectID
                 }
                 else
                 {
-                    Write-Error ($resolver.TargetObjectIdentifier -replace 'urn:uuid:' )
+                    Write-Output ($exportResult.ResourceManagementObject.ObjectIdentifier -replace 'urn:uuid:' )
                 }            
             }
             else

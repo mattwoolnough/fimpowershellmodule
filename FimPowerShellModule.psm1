@@ -135,7 +135,14 @@ function New-FimImportObject
 	When specified, will skip the duplicate create request check
 	#>
 	[Switch]
-	$SkipDuplicateCheck = $false
+	$SkipDuplicateCheck = $false,
+
+    <#
+	.PARAMETER Uri
+	The Uniform Resource Identifier (URI) of themmsshortService. The following example shows how to set this parameter: -uri "http://localhost:5725"
+	#>
+	[String]
+	$Uri = "http://localhost:5725"
     		
 	) 
 	end
@@ -153,7 +160,7 @@ function New-FimImportObject
         {
             $Changes.GetEnumerator() | 
             ForEach{
-                $importObject.Changes += New-FimImportChange -AttributeName $_.Key -AttributeValue $_.Value -Operation Replace
+                $importObject.Changes += New-FimImportChange -Uri $Uri -AttributeName $_.Key -AttributeValue $_.Value -Operation Replace
             }        
         }
         else
@@ -198,7 +205,7 @@ function New-FimImportObject
         if ($State -ieq 'Put')# -and $Operation -ieq 'Add')
         {
             ### Get the Target object
-            $currentFimObject = Export-FIMConfig -OnlyBaseResources -CustomConfig ("/*[ObjectID='{0}']" -F $importObject.TargetObjectIdentifier) | Convert-FimExportToPSObject
+            $currentFimObject = Export-FIMConfig -Uri $Uri -OnlyBaseResources -CustomConfig ("/*[ObjectID='{0}']" -F $importObject.TargetObjectIdentifier) | Convert-FimExportToPSObject
             
           ### Create a new array containing only valid ADDs
             [Array]$uniqueImportChanges = $importObject.Changes | Where-Object {$_.Operation -ne 'Add'}
@@ -229,12 +236,12 @@ function New-FimImportObject
         {
             if ($SkipDuplicateCheck)
             {
-                $importObject | Import-FIMConfig 
+                $importObject | Import-FIMConfig -Uri $Uri
                 
             }
             else
             {
-                $importObject | Skip-DuplicateCreateRequest | Import-FIMConfig
+                $importObject | Skip-DuplicateCreateRequest -Uri $Uri | Import-FIMConfig -Uri $Uri
                 
             } 
         }
@@ -268,7 +275,14 @@ Function New-FimImportChange
         
         [parameter(Mandatory=$false)]  
 		[String]
-        $Locale = "Invariant"
+        $Locale = "Invariant",
+
+        <#
+	    .PARAMETER Uri
+	    The Uniform Resource Identifier (URI) of themmsshortService. The following example shows how to set this parameter: -uri "http://localhost:5725"
+	    #>
+	    [String]
+	    $Uri = "http://localhost:5725"
     ) 
     END
     {
@@ -294,7 +308,7 @@ Function New-FimImportChange
             {
                 Write-Error "For the 'Resolve' option to work, the AttributeValue parameter requires 3 values in this order: ObjectType, AttributeName, AttributeValue"
             }
-			$objectId = Get-FimObjectID -ObjectType $AttributeValue[0] -AttributeName $AttributeValue[1] -AttributeValue $AttributeValue[2]
+			$objectId = Get-FimObjectID -Uri $Uri -ObjectType $AttributeValue[0] -AttributeName $AttributeValue[1] -AttributeValue $AttributeValue[2]
             
 			if (-not $objectId)
             {
@@ -350,7 +364,13 @@ Function Skip-DuplicateCreateRequest
         [parameter(Mandatory=$true, ValueFromPipeline = $true)]        
         $ImportObject,
         [String]
-        $AnchorAttributeName = 'DisplayName'
+        $AnchorAttributeName = 'DisplayName',
+        <#
+	    .PARAMETER Uri
+	    The Uniform Resource Identifier (URI) of themmsshortService. The following example shows how to set this parameter: -uri "http://localhost:5725"
+	    #>
+	    [String]
+	    $Uri = "http://localhost:5725"
     )
     Process
     {
@@ -373,7 +393,7 @@ Function Skip-DuplicateCreateRequest
             return
         }
         
-        $objectId = Get-FimObjectID -ObjectType $ImportObject.ObjectType -AttributeName $AnchorAttributeName -AttributeValue $anchorAttributeValue -ErrorAction SilentlyContinue
+        $objectId = Get-FimObjectID -Uri $Uri -ObjectType $ImportObject.ObjectType -AttributeName $AnchorAttributeName -AttributeValue $anchorAttributeValue -ErrorAction SilentlyContinue
             
 		if ($objectId)
         {
@@ -402,7 +422,14 @@ Function Wait-FimRequest
         $ImportObject,
         
         [parameter(Mandatory=$false)]
-        $RefreshIntervalInSeconds = 5   
+        $RefreshIntervalInSeconds = 5,
+        
+        <#
+	    .PARAMETER Uri
+	    The Uniform Resource Identifier (URI) of themmsshortService. The following example shows how to set this parameter: -uri "http://localhost:5725"
+	    #>
+	    [String]
+	    $Uri = "http://localhost:5725"   
     )
     Process
     { 
@@ -426,7 +453,7 @@ Function Wait-FimRequest
                     ] 
 "@ -F $ImportObject.TargetObjectIdentifier.Replace('urn:uuid:','')
             
-    	    $requests = Export-FIMConfig -OnlyBaseResources -CustomConfig $xpathFilter
+    	    $requests = Export-FIMConfig -Uri $Uri -OnlyBaseResources -CustomConfig $xpathFilter
     	    
     	    if ($requests -ne $null)
     	    {
@@ -481,7 +508,14 @@ Function Get-FimObjectID
         [parameter(Mandatory=$true)]
         [alias(“searchValue”)]
         [String]
-        $AttributeValue
+        $AttributeValue,
+
+        <#
+	    .PARAMETER Uri
+	    The Uniform Resource Identifier (URI) of themmsshortService. The following example shows how to set this parameter: -uri "http://localhost:5725"
+	    #>
+	    [String]
+	    $Uri = "http://localhost:5725"
     )
     Process
     {   
@@ -499,7 +533,7 @@ Function Get-FimObjectID
         
         try
         {
-            Import-FIMConfig $resolver -ErrorAction Stop | Out-Null
+            Import-FIMConfig $resolver -Uri $Uri -ErrorAction Stop | Out-Null
      
             if ($resolver.TargetObjectIdentifier -eq [Guid]::Empty)
             {
@@ -523,7 +557,7 @@ Function Get-FimObjectID
             {
                 ### This is a bug in Import-FIMConfig whereby it does not escape single quotes in the XPath filter
                 ### Try again using Export-FIMConfig
-                $exportResult = Export-FIMConfig -OnlyBaseResources -CustomConfig ("/{0}[{1}=`"{2}`"]" -F $resolver.ObjectType, $resolver.AnchorPairs[0].AttributeName, $resolver.AnchorPairs[0].AttributeValue ) -ErrorAction SilentlyContinue
+                $exportResult = Export-FIMConfig -Uri $Uri -OnlyBaseResources -CustomConfig ("/{0}[{1}=`"{2}`"]" -F $resolver.ObjectType, $resolver.AnchorPairs[0].AttributeName, $resolver.AnchorPairs[0].AttributeValue ) -ErrorAction SilentlyContinue
                 
                 if ($exportResult -eq $null)
                 {
@@ -724,7 +758,13 @@ Function New-FimSynchronizationRule
         $msidmOutboundIsFilterBased,
         $msidmOutboundScopingFilters,
 		$PersistentFlow =  @(),
-		$InitialFlow =  @()
+		$InitialFlow =  @(),
+        <#
+	    .PARAMETER Uri
+	    The Uniform Resource Identifier (URI) of themmsshortService. The following example shows how to set this parameter: -uri "http://localhost:5725"
+	    #>
+	    [String]
+	    $Uri = "http://localhost:5725"
     )
     $srImportObject = New-FimImportObject -ObjectType SynchronizationRule -State Create -Changes @{
 	    DisplayName 						= $DisplayName
@@ -764,5 +804,5 @@ Function New-FimSynchronizationRule
 		$srImportObject.Changes += New-FimImportChange -AttributeName InitialFlow -Operation Add -AttributeValue $_
 	}
 	
-	$srImportObject | Skip-DuplicateCreateRequest | Import-FIMConfig
+	$srImportObject | Skip-DuplicateCreateRequest -Uri $Uri | Import-FIMConfig -Uri $Uri
 }

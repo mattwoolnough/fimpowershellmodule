@@ -208,7 +208,7 @@ function New-FimImportObject
             $currentFimObject = Export-FIMConfig -Uri $Uri -OnlyBaseResources -CustomConfig ("/*[ObjectID='{0}']" -F $importObject.TargetObjectIdentifier) | Convert-FimExportToPSObject
             
           ### Create a new array containing only valid ADDs
-            [Array]$uniqueImportChanges = $importObject.Changes | Where-Object {$_.Operation -ne 'Add'}
+            $uniqueImportChanges = @($importObject.Changes | Where-Object {$_.Operation -ne 'Add'})
             $importObject.Changes | 
                 Where-Object {$_.Operation -eq 'Add'} |
                 ForEach-Object {

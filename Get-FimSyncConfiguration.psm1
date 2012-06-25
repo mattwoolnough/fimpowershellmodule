@@ -113,7 +113,7 @@ Function Get-ImportAttributeFlow
 		                $rule = New-Object PSObject
 		                $rule | Add-Member -MemberType noteproperty -name 'RuleType' -value 'SCRIPTED'
 		                $rule | Add-Member -MemberType noteproperty -name 'SourceMA' -value $srcMA
-		                $rule | Add-Member -MemberType noteproperty -name 'CDObjec Type' -value $cdObjectType
+		                $rule | Add-Member -MemberType noteproperty -name 'CDObjectType' -value $cdObjectType
 		                $rule | Add-Member -MemberType noteproperty -name 'CDAttribute' -value $srcAttributes
 		                $rule | Add-Member -MemberType noteproperty -name 'MVObjectType' -value $mvObjectType
 		                $rule | Add-Member -MemberType noteproperty -name 'MVAttribute' -value $mvAttribute
@@ -456,6 +456,7 @@ function Get-MetaverseSchema
 			#$attribute | Add-Member -MemberType noteproperty -name 'ObjectType' -Value $null
 			$attribute | Add-Member -MemberType noteproperty -name 'AttributeName' -value $mvAttributeType.name
 			$attribute | Add-Member -MemberType noteproperty -name 'Syntax' -value $syntax
+            $attribute | Add-Member -MemberType noteproperty -name 'Indexable' -value ($mvAttributeType.'indexable' -eq 'true')
 			$attribute | Add-Member -MemberType noteproperty -name 'Indexed' -value ($mvAttributeType.indexed -ne $null)
 			$attribute | Add-Member -MemberType noteproperty -name 'MultiValued' -value ($mvAttributeType.'single-value' -ne 'true' -or $mvAttributeType.'single-value' -eq $null)
 			$attributes += $attribute

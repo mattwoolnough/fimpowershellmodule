@@ -82,7 +82,17 @@ Function Get-ImportAttributeFlow
 						 $precedenceRank = $null
 						}
 					
-		                $srcAttribute = $importFlow.'direct-mapping'.'src-attribute'
+                        ###
+                        ### Handle src-attribute that are intinsic (<src-attribute intrinsic="true">dn</src-attribute>)
+                        ###
+                        if ($importFlow.'direct-mapping'.'src-attribute'.intrinsic)
+                        {
+                            $srcAttribute = "<{0}>" -F $importFlow.'direct-mapping'.'src-attribute'.'#text'
+                        }
+                        else
+                        {
+		                    $srcAttribute = $importFlow.'direct-mapping'.'src-attribute'
+                        }
 		                $rule = New-Object PSObject
 		                $rule | Add-Member -MemberType noteproperty -name 'RuleType' -value 'DIRECT'
 		                $rule | Add-Member -MemberType noteproperty -name 'SourceMA' -value $srcMA
@@ -98,8 +108,26 @@ Function Get-ImportAttributeFlow
 		            }
 		            elseif ($importFlow.'scripted-mapping' -ne $null)
 		            {                
-		                $scriptContext = $importFlow.'scripted-mapping'.'script-context'                
-		                $srcAttributes = $importFlow.'scripted-mapping'.'src-attribute'    
+		                $scriptContext = $importFlow.'scripted-mapping'.'script-context'  
+
+                        ###
+                        ### Handle src-attribute that are intinsic (<src-attribute intrinsic="true">dn</src-attribute>)
+                        ###              
+		                $srcAttributes = @()
+                        $importFlow.'scripted-mapping'.'src-attribute' | ForEach-Object {
+                            if ($_.intrinsic)
+                            {
+                                $srcAttributes += "<{0}>" -F $_.'#text'
+                            }
+                            else
+                            {
+		                        $srcAttributes += $_
+                            }
+                        }
+                        if ($srcAttributes.Count -eq 1)
+                        {
+                            $srcAttributes = $srcAttributes -as [String]
+                        }
 						
 						if ($precedenceType -eq 'ranked')
 						{
@@ -214,7 +242,17 @@ Function Get-ExportAttributeFlow
 		            
 		            if ($exportFlow.'direct-mapping' -ne $null)
 		            {
-		                $srcAttribute = $exportFlow.'direct-mapping'.'src-attribute'
+                        ###
+                        ### Handle src-attribute that are intinsic (<src-attribute intrinsic="true">object-id</src-attribute>)
+                        ###
+                        if ($exportFlow.'direct-mapping'.'src-attribute'.intrinsic)
+                        {
+                            $srcAttribute = "<{0}>" -F $exportFlow.'direct-mapping'.'src-attribute'.'#text'
+                        }
+                        else
+                        {
+		                    $srcAttribute = $exportFlow.'direct-mapping'.'src-attribute'
+                        }
 		                
 		                $rule = New-Object PSObject
 		                $rule | Add-Member -MemberType noteproperty -name 'RuleType' -value 'DIRECT'
@@ -230,8 +268,25 @@ Function Get-ExportAttributeFlow
 		            }
 		            elseif ($exportFlow.'scripted-mapping' -ne $null)
 		            {                
-		                $scriptContext = $exportFlow.'scripted-mapping'.'script-context'
-		                $srcAttributes = $exportFlow.'scripted-mapping'.'src-attribute'
+		                $scriptContext = $exportFlow.'scripted-mapping'.'script-context'		                
+
+                        ###
+                        ### Handle src-attribute that are intinsic (<src-attribute intrinsic="true">object-id</src-attribute>)
+                        ###
+                        $exportFlow.'scripted-mapping'.'src-attribute' | ForEach-Object {
+                            if ($_.intrinsic)
+                            {
+                                $srcAttributes += "<{0}>" -F $_.'#text'
+                            }
+                            else
+                            {
+		                        $srcAttributes += $_
+                            }
+                        }
+                        if ($srcAttributes.Count -eq 1)
+                        {
+                            $srcAttributes = $srcAttributes -as [String]
+                        }
 		                    
 		                $rule = New-Object PSObject
 		                $rule | Add-Member -MemberType noteproperty -name 'RuleType' -value 'SCRIPTED'

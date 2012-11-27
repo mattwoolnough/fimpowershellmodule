@@ -194,7 +194,7 @@ function New-FimImportObject
         ###
         if (($State -ieq 'Put' -or $State -ieq 'Delete') -and $importObject.AnchorPairs.Count -eq 1)
         {
-			$targetID = Get-FimObjectID -ObjectType $ObjectType -AttributeName @($importObject.AnchorPairs)[0].AttributeName -AttributeValue @($importObject.AnchorPairs)[0].AttributeValue
+			$targetID = Get-FimObjectID -ObjectType $ObjectType -AttributeName @($importObject.AnchorPairs)[0].AttributeName -AttributeValue @($importObject.AnchorPairs)[0].AttributeValue -Uri $Uri
             
 			$importObject.TargetObjectIdentifier = $targetID
         }     
@@ -262,7 +262,7 @@ Function New-FimImportChange
         $AttributeName,
         
         [parameter(Mandatory=$true)] 
-		[ValidateScript({($_ -is [Array] -and $_.Count -eq 3) -or $_ -is [String]})]
+		[ValidateScript({($_ -is [Array] -and $_.Count -eq 3) -or $_ -is [String] -or $_ -is [DateTime] -or $_ -is [Bool]})]
         $AttributeValue,
 		
 		[parameter(Mandatory=$true)]
@@ -298,6 +298,14 @@ Function New-FimImportChange
         if ($AttributeValue -is [String])
         {
             $importChange.AttributeValue = $AttributeValue
+        }
+		elseif ($AttributeValue -is [DateTime])
+		{
+			$importChange.AttributeValue = $AttributeValue.ToString() #"yyyy'-'MM'-'dd'T'HH':'mm':'ss'.000'")
+		}
+        elseif ($AttributeValue -is [Boolean])
+        {
+            $importChange.AttributeValue = $AttributeValue.ToString()
         }
         elseif ($AttributeValue -is [Array])
         {
@@ -738,6 +746,7 @@ function Get-FimRequestParameter
     }
 }
 
+##TODO: Add parameter sets and help to this
 Function New-FimSynchronizationRule
 {
    	param
@@ -745,23 +754,31 @@ Function New-FimSynchronizationRule
         $DisplayName,
         $Description,
 		$ManagementAgentID,
-		$ConnectedObjectType,
-		$ILMObjectType,
-		$DisconnectConnectedSystemObject,
-		$CreateConnectedSystemObject,
-		$CreateILMObject,
-		$FlowType,
-		$Precedence,
-		$ConnectedSystemScope,
-		$RelationshipCriteria,
+        [Alias("ConnectedObjectType")]
+		$ExternalSystemResourceType,
+        [Alias("ILMObjectType")]
+		$MetaverseResourceType,
+        [Alias("DisconnectConnectedSystemObject")]
+		[bool]$EnableDeprovisioning,
+        [Alias("CreateConnectedSystemObject")]
+		[bool]$CreateResourceInExternalSystem,
+        [Alias("CreateILMObject")]
+		[bool]$CreateResourceInFIM,        
+		[int]$FlowType, ##TODO: Figure out how to make this an enum
+		[int]$Precedence = 1,
+        [Alias("ConnectedSystemScope")]
+		$ExternalSystemScopingFilter,
+		$RelationshipCriteria = @{},
         $SynchronizationRuleParameters,
-        $msidmOutboundIsFilterBased,
-        $msidmOutboundScopingFilters,
-		$PersistentFlow =  @(),
-		$InitialFlow =  @(),
+        [bool]$msidmOutboundIsFilterBased = $false,
+        $msidmOutboundScopingFilters = $null,
+        [Alias("PersistentFlow")]
+		$PersistentFlowRules =  @(),
+        [Alias("InitialFlow")]
+		$InitialFlowRules =  @(),
         <#
 	    .PARAMETER Uri
-	    The Uniform Resource Identifier (URI) of themmsshortService. The following example shows how to set this parameter: -uri "http://localhost:5725"
+	    The Uniform Resource Identifier (URI) of the FIM Service. The following example shows how to set this parameter: -uri "http://localhost:5725"
 	    #>
 	    [String]
 	    $Uri = "http://localhost:5725"
@@ -770,14 +787,14 @@ Function New-FimSynchronizationRule
 	    DisplayName 						= $DisplayName
 	    Description 						= $Description
 	    ManagementAgentID 					= $ManagementAgentID
-		ConnectedObjectType 				= $ConnectedObjectType
-	    ILMObjectType 						= $ILMObjectType
-		DisconnectConnectedSystemObject 	= $DisconnectConnectedSystemObject	
-		CreateConnectedSystemObject 		= $CreateConnectedSystemObject
-		CreateILMObject 					= $CreateILMObject	
-		FlowType 							= $FlowType
-		Precedence 							= $Precedence
-		RelationshipCriteria 				= $RelationshipCriteria
+		ConnectedObjectType 				= $ExternalSystemResourceType
+	    ILMObjectType 						= $MetaverseResourceType
+		DisconnectConnectedSystemObject 	= $EnableDeprovisioning.ToString()
+		CreateConnectedSystemObject 		= $CreateResourceInExternalSystem.ToString()
+		CreateILMObject 					= $CreateResourceInFIM.ToString()	
+		FlowType 							= $FlowType.ToString()
+		Precedence 							= $Precedence.ToString()
+		#RelationshipCriteria 				= $RelationshipCriteria
     } -PassThru
     
     if ($msidmOutboundIsFilterBased)
@@ -786,23 +803,217 @@ Function New-FimSynchronizationRule
         $srImportObject.Changes += New-FimImportChange -AttributeName msidmOutboundScopingFilters -Operation None -AttributeValue $msidmOutboundScopingFilters
     }
     
+    if ($RelationshipCriteria)
+    {
+        $localRelationshipCriteria = "<conditions>"
+        foreach ($key in $RelationshipCriteria.Keys)
+        {
+            $localRelationshipCriteria += ("<condition><ilmAttribute>{0}</ilmAttribute><csAttribute>{1}</csAttribute></condition>" -f $key, $RelationshipCriteria[$key])
+        }
+        $localRelationshipCriteria += "</conditions>"
+
+        $srImportObject.Changes += New-FimImportChange -AttributeName RelationshipCriteria -Operation None -AttributeValue $localRelationshipCriteria
+    }
+
+    ##TODO - this needs to take in an input array
     if ($SynchronizationRuleParameters)
      {
         $srImportObject.Changes += New-FimImportChange -AttributeName SynchronizationRuleParameters -Operation Add -AttributeValue $SynchronizationRuleParameters
     }  
     
-    if ($ConnectedSystemScope)
+    ##TODO - this needs to take in an input array
+    if ($ExternalSystemScopingFilter)
     {
-        $srImportObject.Changes += New-FimImportChange -AttributeName ConnectedSystemScope -Operation Add -AttributeValue $ConnectedSystemScope
+        $srImportObject.Changes += New-FimImportChange -AttributeName ConnectedSystemScope -Operation Add -AttributeValue $ExternalSystemScopingFilter
     }  
 	
-	$PersistentFlow | ForEach-Object {
+	$PersistentFlowRules | ForEach-Object {
 		$srImportObject.Changes += New-FimImportChange -AttributeName PersistentFlow -Operation Add -AttributeValue $_
 	}
     
-    $InitialFlow | ForEach-Object {
+    $InitialFlowRules | ForEach-Object {
 		$srImportObject.Changes += New-FimImportChange -AttributeName InitialFlow -Operation Add -AttributeValue $_
 	}
 	
 	$srImportObject | Skip-DuplicateCreateRequest -Uri $Uri | Import-FIMConfig -Uri $Uri
 }
+
+function Start-SQLAgentJob
+{
+	param
+	(
+		[parameter(Mandatory=$false)]
+		[String]
+		$JobName = "FIM_MaintainSetsJob",
+		[parameter(Mandatory=$true)]
+		[String]
+		$SQLServer,	
+		[parameter(Mandatory=$false)]
+		[Switch]
+		$Wait
+	)
+	
+	$connection = New-Object System.Data.SQLClient.SQLConnection
+	$Connection.ConnectionString = "server={0};database=FIMService;trusted_connection=true;" -f $SQLServer
+	$connection.Open()
+	
+	$cmd = New-Object System.Data.SQLClient.SQLCommand
+	$cmd.Connection = $connection
+	$cmd.CommandText = "exec msdb.dbo.sp_start_job '{0}'" -f $JobName
+	
+	Write-Verbose "Executing job $JobName on $SQLServer"
+	$cmd.ExecuteNonQuery()
+	
+	if ($Wait)
+	{
+		$cmd.CommandText = "exec msdb.dbo.sp_help_job @job_name='{0}', @execution_status = 4" -f $JobName
+		
+		$reader = $cmd.ExecuteReader()
+		
+		while ($reader.HasRows -eq $false)
+		{
+			Write-Verbose "Job is still executing. Sleeping..."
+			Start-Sleep -Milliseconds 1000
+			
+			$reader.Close()
+			$reader = $cmd.ExecuteReader()
+		}
+	}
+	$connection.Close()
+}
+
+function New-FimSchemaBinding
+{
+   	param
+   	(
+   		$ObjectType, 
+		$AttributeType, 
+		$Required = 'false',
+		$DisplayName = $AttributeType,
+		$Description = $AttributeType,
+        <#
+	    .PARAMETER Uri
+	    The Uniform Resource Identifier (URI) of themmsshortService. The following example shows how to set this parameter: -uri "http://localhost:5725"
+	    #>
+	    [String]
+	    $Uri = "http://localhost:5725"
+
+   	)     
+	if (Get-FimSchemaBinding $AttributeType $ObjectType $Uri)
+	{
+		Write-Warning "Binding Already Exists for $objectType and $attributeType"
+        return
+	}
+    
+    New-FimImportObject -ObjectType BindingDescription -State Create -Uri $Uri -Changes @{
+        BoundAttributeType	= ('AttributeTypeDescription',	'Name',	$AttributeType)
+		BoundObjectType		= ('ObjectTypeDescription',		'Name',	$ObjectType)
+        DisplayName			= $DisplayName 
+		Description			= $Description
+        Required			= $Required
+	} -SkipDuplicateCheck -ApplyNow 
+} 
+
+function New-FimSchemaAttribute
+{
+  	param
+   	(
+   		$Name, 
+		$DisplayName = $Name, 
+		$DataType,
+		$Multivalued = 'false',
+        $Description = $Name,
+        <#
+	    .PARAMETER Uri
+	    The Uniform Resource Identifier (URI) of themmsshortService. The following example shows how to set this parameter: -uri "http://localhost:5725"
+	    #>
+	    [String]
+	    $Uri = "http://localhost:5725"
+
+   	)     
+    New-FimImportObject -ObjectType AttributeTypeDescription -State Create -Uri $uri -Changes @{
+		DisplayName = $DisplayName
+		Name		= $Name
+		DataType	= $DataType
+		Multivalued	= $Multivalued
+        Description	= $Description
+	} -ApplyNow
+} 
+ 
+function New-FimSchemaObjectType
+{
+  	param
+   	(
+   		$Name, 
+		$DisplayName = $Name,
+        $Description = $Name,
+        <#
+	    .PARAMETER Uri
+	    The Uniform Resource Identifier (URI) of themmsshortService. The following example shows how to set this parameter: -uri "http://localhost:5725"
+	    #>
+	    [String]
+	    $Uri = "http://localhost:5725"
+   	)             
+    New-FimImportObject -ObjectType ObjectTypeDescription -State Create -Uri $Uri -Changes @{
+		DisplayName = $DisplayName
+		Name		= $Name
+        Description	= $Description
+	} -ApplyNow             
+} 
+
+function Get-FimSchemaBinding
+{
+  	Param
+   	(        
+        [String]		
+        $AttributeType,
+		
+        [String]		
+        $ObjectType,
+        <#
+	    .PARAMETER Uri
+	    The Uniform Resource Identifier (URI) of themmsshortService. The following example shows how to set this parameter: -uri "http://localhost:5725"
+	    #>
+	    [String]
+	    $Uri = "http://localhost:5725"
+
+    )  
+	$attributeTypeID 	= Get-FimObjectID AttributeTypeDescription 	Name $AttributeType
+	$objectTypeID 		= Get-FimObjectID ObjectTypeDescription 	Name $ObjectType
+	
+    $xPathFilter = "/BindingDescription[BoundObjectType='{0}' and BoundAttributeType='{1}']" -f $objectTypeID, $attributeTypeID
+    Export-FIMConfig -OnlyBaseResources -CustomConfig $xPathFilter -Uri $Uri | Convert-FimExportToPSObject           
+}
+
+function New-FimSet
+{
+  	param
+   	(
+		$DisplayName = $Name,
+        $Description = $Name,
+        $Filter, ##TODO - make sure we were passed JUST the XPath filter
+        <#
+	    .PARAMETER Uri
+	    The Uniform Resource Identifier (URI) of themmsshortService. The following example shows how to set this parameter: -uri "http://localhost:5725"
+	    #>
+	    [String]
+	    $Uri = "http://localhost:5725"
+   	)
+    # this is all one line to make this backwards compatible with FIM 2010 RTM  
+    $setXPathFilter = "<Filter xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:xsd='http://www.w3.org/2001/XMLSchema' Dialect='http://schemas.microsoft.com/2006/11/XPathFilterDialect' xmlns='http://schemas.xmlsoap.org/ws/2004/09/enumeration'>{0}</Filter>" -F $Filter
+    New-FimImportObject -ObjectType Set -State Create -Uri $Uri -Changes @{
+		DisplayName = $DisplayName
+        Description	= $Description
+        Filter      = $setXPathFilter
+	} -ApplyNow             
+ }
+
+ # backwards compat for the old names of these functions
+ New-Alias -Name Add-FimSchemaBinding -Value New-FimSchemaBinding
+ New-Alias -Name Add-FimSchemaAttribute -Value New-FimSchemaAttribute
+ New-Alias -Name Add-FimSchemaObject -Value New-FimSchemaObjectType
+ New-Alias -Name Add-FimSet -Value New-FimSet
+
+ # this is required because aliases aren't
+ # exported by default
+ Export-ModuleMember -Function * -Alias *

@@ -35,13 +35,14 @@ Function Get-ImportAttributeFlow
 		foreach ($maFile in $maFiles)
 		{
 		   ### Skip the file if it does NOT contain an ma-data node
-		   if ((select-xml $maFile -XPath "//ma-data") -eq $null) {continue}
-		   
-		   ### Get the MA Name and MA ID
-		   $maName = (select-xml $maFile -XPath "//ma-data/name").Node.InnerText
-		   $maID = (select-xml $maFile -XPath "//ma-data/id").Node.InnerText  
-		   
-		   $maList.Add($maID,$maName)
+			if (select-xml $maFile -XPath "//ma-data" -ErrorAction 0)
+			{
+			   ### Get the MA Name and MA ID
+			   $maName = (select-xml $maFile -XPath "//ma-data/name").Node.InnerText
+			   $maID = (select-xml $maFile -XPath "//ma-data/id").Node.InnerText  
+			   
+			   $maList.Add($maID,$maName)
+			}
 		}
 
 		###
@@ -111,7 +112,7 @@ Function Get-ImportAttributeFlow
 		                $scriptContext = $importFlow.'scripted-mapping'.'script-context'  
 
                         ###
-                        ### Handle src-attribute that are intinsic (<src-attribute intrinsic="true">dn</src-attribute>)
+                        ### Handle src-attribute that are intrinsic (<src-attribute intrinsic="true">dn</src-attribute>)
                         ###              
 		                $srcAttributes = @()
                         $importFlow.'scripted-mapping'.'src-attribute' | ForEach-Object {
@@ -183,7 +184,36 @@ Function Get-ImportAttributeFlow
 						$rule | Add-Member -MemberType noteproperty -name 'PrecedenceRank' -value $precedenceRank
 		                                
 		                $rules += $rule                        
-		            }       
+		            }
+					elseif ($importFlow.'constant-mapping' -ne $null)
+					{
+						if ($precedenceType -eq 'ranked')
+						{
+							 $precedenceRank += 1
+						}
+						else
+						{
+							 $precedenceRank = $null
+						}
+
+					
+						$constantValue = $importFlow.'constant-mapping'.'constant-value'
+						
+		                $rule = New-Object PSObject
+		                $rule | Add-Member -MemberType noteproperty -name 'RuleType' -value "CONSTANT"
+		                $rule | Add-Member -MemberType noteproperty -name 'SourceMA' -value $srcMA
+		                $rule | Add-Member -MemberType noteproperty -name 'CDObjectType' -value $cdObjectType
+		                $rule | Add-Member -MemberType noteproperty -name 'CDAttribute' -value $null
+		                $rule | Add-Member -MemberType noteproperty -name 'MVObjectType' -value $mvObjectType
+		                $rule | Add-Member -MemberType noteproperty -name 'MVAttribute' -value $mvAttribute
+						$rule | Add-Member -MemberType noteproperty -name 'ScriptContext' -value $null
+						$rule | Add-Member -MemberType noteproperty -name 'PrecedenceType' -value $precedenceType
+						$rule | Add-Member -MemberType noteproperty -name 'PrecedenceRank' -value $precedenceRank
+						$rule | Add-Member -MemberType noteproperty -name 'ConstantValue' -value $constantValue
+		                                
+		                $rules += $rule                        
+						
+					}
 		        }#foreach($importFlow in $importFlows.'import-flow')
 		    }#foreach($importFlows in $importFlowSet.'import-flows')
 		}#foreach($importFlowSet in $mv.selectNodes("//import-flow-set"))
@@ -238,12 +268,16 @@ Function Get-ExportAttributeFlow
 		        foreach($exportFlow in $exportFlowSet.'export-flow')
 		        {
 		            $cdAttribute = $exportFlow.'cd-attribute'
-		            $suppressDeletions = $exportFlow.'suppress-deletions'
+		            [bool]$allowNulls = $false
+					if ([bool]::TryParse($exportFlow.'suppress-deletions', [ref]$allowNulls))
+					{
+						$allowNulls = -not $allowNulls
+					}
 		            
 		            if ($exportFlow.'direct-mapping' -ne $null)
 		            {
                         ###
-                        ### Handle src-attribute that are intinsic (<src-attribute intrinsic="true">object-id</src-attribute>)
+                        ### Handle src-attribute that are intrinsic (<src-attribute intrinsic="true">object-id</src-attribute>)
                         ###
                         if ($exportFlow.'direct-mapping'.'src-attribute'.intrinsic)
                         {
@@ -262,16 +296,17 @@ Function Get-ExportAttributeFlow
 		                $rule | Add-Member -MemberType noteproperty -name 'CDObjectType' -value $cdObjectType
 		                $rule | Add-Member -MemberType noteproperty -name 'CDAttribute' -value $cdAttribute
 						$rule | Add-Member -MemberType noteproperty -name 'ScriptContext' -value $null
-						$rule | Add-Member -MemberType noteproperty -name 'AllowNulls' -value $suppressDeletions
+						$rule | Add-Member -MemberType noteproperty -name 'AllowNulls' -value $allowNulls
 		                
 		                $rules += $rule
 		            }
 		            elseif ($exportFlow.'scripted-mapping' -ne $null)
 		            {                
 		                $scriptContext = $exportFlow.'scripted-mapping'.'script-context'		                
-
+						$srcAttributes = @()
+						
                         ###
-                        ### Handle src-attribute that are intinsic (<src-attribute intrinsic="true">object-id</src-attribute>)
+                        ### Handle src-attribute that are intrinsic (<src-attribute intrinsic="true">object-id</src-attribute>)
                         ###
                         $exportFlow.'scripted-mapping'.'src-attribute' | ForEach-Object {
                             if ($_.intrinsic)
@@ -296,7 +331,7 @@ Function Get-ExportAttributeFlow
 		                $rule | Add-Member -MemberType noteproperty -name 'CDObjectType' -value $cdObjectType
 		                $rule | Add-Member -MemberType noteproperty -name 'CDAttribute' -value $cdAttribute	
 		                $rule | Add-Member -MemberType noteproperty -name 'ScriptContext' -value $scriptContext
-						$rule | Add-Member -MemberType noteproperty -name 'AllowNulls' -value $suppressDeletions
+						$rule | Add-Member -MemberType noteproperty -name 'AllowNulls' -value $allowNulls
 		                                
 		                $rules += $rule                        
 		            }
@@ -313,7 +348,7 @@ Function Get-ExportAttributeFlow
 							$rule | Add-Member -MemberType noteproperty -name 'CDObjectType' -value $cdObjectType
 							$rule | Add-Member -MemberType noteproperty -name 'CDAttribute' -value $cdAttribute														
 							$rule | Add-Member -MemberType noteproperty -name 'ScriptContext' -value $null
-							$rule | Add-Member -MemberType noteproperty -name 'AllowNulls' -value $suppressDeletions
+							$rule | Add-Member -MemberType noteproperty -name 'AllowNulls' -value $allowNulls
 											
 							$rules += $rule             
 						}
@@ -329,13 +364,13 @@ Function Get-ExportAttributeFlow
 							$rule | Add-Member -MemberType noteproperty -name 'CDObjectType' -value $cdObjectType
 							$rule | Add-Member -MemberType noteproperty -name 'CDAttribute' -value $cdAttribute														
 							$rule | Add-Member -MemberType noteproperty -name 'ScriptContext' -value $scriptContext
-							$rule | Add-Member -MemberType noteproperty -name 'AllowNulls' -value $suppressDeletions
+							$rule | Add-Member -MemberType noteproperty -name 'AllowNulls' -value $allowNulls
 											
 							$rules += $rule             
 						}
 						else
 						{
-							Write-Host "or else..."
+							throw "Unsupported Export Flow type"
 						}
 			           
 					}

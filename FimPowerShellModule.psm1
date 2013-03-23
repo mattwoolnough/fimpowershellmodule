@@ -1,4 +1,5 @@
-﻿###
+﻿$ProgressPreference = "SilentlyContinue"
+###
 ### Load the FIMAutomation Snap-In
 ###
 if(-not (get-pssnapin | Where-Object {$_.Name -eq 'FIMAutomation'})) {add-pssnapin FIMAutomation}
@@ -81,8 +82,7 @@ function New-FimImportObject
 	-None
 	#>
 	[parameter(Mandatory=$true)]
-	[String]
-	[ValidateScript({(“Create”, “Put”, “Delete”, "Resolve", "None") -icontains $_})]
+	[ValidateSet(“Create”, “Put”, “Delete”, "Resolve", "None")]
 	$State,
 
 	<#
@@ -118,7 +118,7 @@ function New-FimImportObject
 	
 	<#
 	.PARAMETER ApplyNow
-	When specified, will sumit the request to FIM
+	When specified, will submit the request to FIM
 	#>
 	[Switch]
 	$ApplyNow = $false,
@@ -157,10 +157,18 @@ function New-FimImportObject
         ### Process the Changes parameter
         ###
         if ($Changes -is [Hashtable])
-        {
-            $Changes.GetEnumerator() | 
-            ForEach{
-                $importObject.Changes += New-FimImportChange -Uri $Uri -AttributeName $_.Key -AttributeValue $_.Value -Operation Replace
+        {            
+            foreach ($c in $changes.Keys)
+            {
+                try
+                {
+                    $importObject.Changes += New-FimImportChange -Uri $Uri -AttributeName $c -AttributeValue $changes[$c] -Operation Replace
+                }
+                catch
+                {
+                    $outerException = New-Object System.InvalidOperationException -ArgumentList "Attribute $c could not be added to the change set", ($_.Exception)                    
+                    $PSCmdlet.ThrowTerminatingError((New-Object System.Management.Automation.ErrorRecord -ArgumentList ($outerException),"InvalidAttribute",([System.Management.Automation.ErrorCategory]::InvalidArgument),($changes[$c])))
+                }
             }        
         }
         else
@@ -262,11 +270,11 @@ Function New-FimImportChange
         $AttributeName,
         
         [parameter(Mandatory=$true)] 
-		[ValidateScript({($_ -is [Array] -and $_.Count -eq 3) -or $_ -is [String] -or $_ -is [DateTime] -or $_ -is [Bool]})]
+		[ValidateScript({($_ -is [Array] -and $_.Count -eq 3) -or $_ -is [String] -or $_ -is [DateTime] -or $_ -is [Bool] -or $_ -is [Int] -or ($_ -is [Guid])})]
         $AttributeValue,
 		
 		[parameter(Mandatory=$true)]
-		[ValidateScript({(“Add”, “Replace”, “Delete”, "None") -icontains $_})]
+		[ValidateSet(“Add”, “Replace”, “Delete”, "None")]
         $Operation,
 		
 		[parameter(Mandatory=$false)]  
@@ -303,7 +311,7 @@ Function New-FimImportChange
 		{
 			$importChange.AttributeValue = $AttributeValue.ToString() #"yyyy'-'MM'-'dd'T'HH':'mm':'ss'.000'")
 		}
-        elseif ($AttributeValue -is [Boolean])
+        elseif (($AttributeValue -is [Boolean]) -or ($AttributeValue -is [Int]) -or ($AttributeValue -is [Guid]))
         {
             $importChange.AttributeValue = $AttributeValue.ToString()
         }
@@ -484,6 +492,8 @@ Function Convert-FimExportToPSObject
     Process
     {        
         $psObject = New-Object PSObject
+        $psObject.PSTypeNames.Insert(0, 'FIMPowerShellModule.FimObject')
+
         $ExportObject.ResourceManagementObject.ResourceManagementAttributes | ForEach-Object{
             if ($_.Value -ne $null)
             {
@@ -749,58 +759,101 @@ function Get-FimRequestParameter
 ##TODO: Add parameter sets and help to this
 Function New-FimSynchronizationRule
 {
+    [CmdletBinding()]
+    [OutputType([Guid])]
    	param
     (
+        [parameter(Mandatory=$true)]
+        [ValidateNotNullOrEmpty()]
+        [string]
         $DisplayName,
+        [parameter(Mandatory=$false)]
+        [ValidateNotNullOrEmpty()]
+        [string]
         $Description,
 		$ManagementAgentID,
+        [parameter(Mandatory=$true)]
+        [ValidateNotNullOrEmpty()]
         [Alias("ConnectedObjectType")]
+        [string]
 		$ExternalSystemResourceType,
+        [parameter(Mandatory=$true)]
+        [ValidateNotNullOrEmpty()]
         [Alias("ILMObjectType")]
+        [string]
 		$MetaverseResourceType,
+        [parameter(Mandatory=$false)]
         [Alias("DisconnectConnectedSystemObject")]
-		[bool]$EnableDeprovisioning,
+		[Switch]
+        $EnableDeprovisioning,
+        [parameter(Mandatory=$false)]
         [Alias("CreateConnectedSystemObject")]
-		[bool]$CreateResourceInExternalSystem,
+		[Switch]
+		$CreateResourceInExternalSystem,
+        [parameter(Mandatory=$false)]
         [Alias("CreateILMObject")]
-		[bool]$CreateResourceInFIM,        
+		[Switch]
+        $CreateResourceInFIM,
+        [parameter(Mandatory=$true)]
+        [ValidateRange(0,2)] 
 		[int]$FlowType, ##TODO: Figure out how to make this an enum
-		[int]$Precedence = 1,
+        [parameter(Mandatory=$false)]	
+        [ValidateRange(1, [Int32]::MaxValue)]
+        [int]
+        $Precedence = 1,
+        [parameter(Mandatory=$false)]
         [Alias("ConnectedSystemScope")]
+        [string[]]
 		$ExternalSystemScopingFilter,
+        [parameter(Mandatory=$false)]
 		$RelationshipCriteria = @{},
+        [parameter(Mandatory=$false)]
+        [string]
         $SynchronizationRuleParameters,
-        [bool]$msidmOutboundIsFilterBased = $false,
+        [parameter(Mandatory=$false)]
+        [Switch]
+        $msidmOutboundIsFilterBased = $false,
+        [parameter(Mandatory=$false)]
         $msidmOutboundScopingFilters = $null,
+        [parameter(Mandatory=$false)]
         [Alias("PersistentFlow")]
-		$PersistentFlowRules =  @(),
+        [string[]]
+		$PersistentFlowRules = @(),
+        [parameter(Mandatory=$false)]
         [Alias("InitialFlow")]
-		$InitialFlowRules =  @(),
+        [string[]]
+		$InitialFlowRules = @(),
         <#
 	    .PARAMETER Uri
 	    The Uniform Resource Identifier (URI) of the FIM Service. The following example shows how to set this parameter: -uri "http://localhost:5725"
 	    #>
 	    [String]
-	    $Uri = "http://localhost:5725"
+	    $Uri = "http://localhost:5725",
+        [parameter(Mandatory=$false)]
+        [Switch]
+        $PassThru
     )
     $srImportObject = New-FimImportObject -ObjectType SynchronizationRule -State Create -Changes @{
-	    DisplayName 						= $DisplayName
-	    Description 						= $Description
+	    DisplayName 						= $DisplayName	    
 	    ManagementAgentID 					= $ManagementAgentID
 		ConnectedObjectType 				= $ExternalSystemResourceType
 	    ILMObjectType 						= $MetaverseResourceType
-		DisconnectConnectedSystemObject 	= $EnableDeprovisioning.ToString()
-		CreateConnectedSystemObject 		= $CreateResourceInExternalSystem.ToString()
-		CreateILMObject 					= $CreateResourceInFIM.ToString()	
-		FlowType 							= $FlowType.ToString()
-		Precedence 							= $Precedence.ToString()
-		#RelationshipCriteria 				= $RelationshipCriteria
+		DisconnectConnectedSystemObject 	= $EnableDeprovisioning.ToBool()
+		CreateConnectedSystemObject 		= $CreateResourceInExternalSystem.ToBool()
+		CreateILMObject 					= $CreateResourceInFIM.ToBool()
+		FlowType 							= $FlowType
+		Precedence 							= $Precedence
     } -PassThru
     
     if ($msidmOutboundIsFilterBased)
     {
         $srImportObject.Changes += New-FimImportChange -AttributeName msidmOutboundIsFilterBased  -Operation None -AttributeValue $msidmOutboundIsFilterBased
         $srImportObject.Changes += New-FimImportChange -AttributeName msidmOutboundScopingFilters -Operation None -AttributeValue $msidmOutboundScopingFilters
+    }
+
+    if ($Description)
+    {
+        $srImportObject.Changes += New-FimImportChange -AttributeName Description -Operation None -AttributeValue $Description         						
     }
     
     if ($RelationshipCriteria)
@@ -814,17 +867,18 @@ Function New-FimSynchronizationRule
 
         $srImportObject.Changes += New-FimImportChange -AttributeName RelationshipCriteria -Operation None -AttributeValue $localRelationshipCriteria
     }
-
-    ##TODO - this needs to take in an input array
+   
     if ($SynchronizationRuleParameters)
-     {
+    {
         $srImportObject.Changes += New-FimImportChange -AttributeName SynchronizationRuleParameters -Operation Add -AttributeValue $SynchronizationRuleParameters
-    }  
-    
-    ##TODO - this needs to take in an input array
+    }
+        
     if ($ExternalSystemScopingFilter)
     {
-        $srImportObject.Changes += New-FimImportChange -AttributeName ConnectedSystemScope -Operation Add -AttributeValue $ExternalSystemScopingFilter
+        foreach ($filter in $ExternalSystemScopingFilter)
+        {
+            $srImportObject.Changes += New-FimImportChange -AttributeName ConnectedSystemScope -Operation Add -AttributeValue $filter
+        }
     }  
 	
 	$PersistentFlowRules | ForEach-Object {
@@ -836,6 +890,11 @@ Function New-FimSynchronizationRule
 	}
 	
 	$srImportObject | Skip-DuplicateCreateRequest -Uri $Uri | Import-FIMConfig -Uri $Uri
+
+    if ($PassThru.ToBool())
+    {
+        Write-Output [guid](Get-FimObjectID -ObjectType SynchronizationRule -AttributeName DisplayName -AttributeValue $DisplayName)
+    }
 }
 
 function Start-SQLAgentJob
@@ -884,17 +943,32 @@ function Start-SQLAgentJob
 
 function New-FimSchemaBinding
 {
+    [CmdletBinding()]
    	param
-   	(
+  	(
+        [parameter(Mandatory=$true)]
+        [ValidateScript({ ($_ -is [Guid]) -or ($_ -is [String]) })]
    		$ObjectType, 
+        [parameter(Mandatory=$true)]
+        [ValidateScript({ ($_ -is [Guid]) -or ($_ -is [String]) })]
 		$AttributeType, 
-		$Required = 'false',
+        [parameter(Mandatory=$false)]
+        [Switch]
+		$Required = $false,
+        [parameter(Mandatory=$false)]
+        [ValidateNotNullOrEmpty()]
+        [string]
 		$DisplayName = $AttributeType,
-		$Description = $AttributeType,
+        [parameter(Mandatory=$false)]
+        [ValidateNotNullOrEmpty()]
+	    [String]
+		$Description,
         <#
 	    .PARAMETER Uri
 	    The Uniform Resource Identifier (URI) of themmsshortService. The following example shows how to set this parameter: -uri "http://localhost:5725"
 	    #>
+        [parameter(Mandatory=$false)]
+        [ValidateNotNullOrEmpty()]
 	    [String]
 	    $Uri = "http://localhost:5725"
 
@@ -904,61 +978,152 @@ function New-FimSchemaBinding
 		Write-Warning "Binding Already Exists for $objectType and $attributeType"
         return
 	}
+
+    $changeSet = @{
+        DisplayName	= $DisplayName 
+        Required	= $Required
+    }
     
-    New-FimImportObject -ObjectType BindingDescription -State Create -Uri $Uri -Changes @{
-        BoundAttributeType	= ('AttributeTypeDescription',	'Name',	$AttributeType)
-		BoundObjectType		= ('ObjectTypeDescription',		'Name',	$ObjectType)
-        DisplayName			= $DisplayName 
-		Description			= $Description
-        Required			= $Required
-	} -SkipDuplicateCheck -ApplyNow 
+    if ($Description)
+    {
+        $changeSet.Add("Description", $Description)
+    }
+
+    if ($ObjectType -is [Guid])
+    {
+        $changeSet.Add("BoundObjectType", $ObjectType)
+    }
+    elseif ($ObjectType -is [String])
+    {
+        $changeSet.Add("BoundObjectType", ('ObjectTypeDescription', 'Name', $ObjectType))
+    }
+    else
+    {
+        throw "Unsupported input format for -ObjectType"
+    }
+
+    if ($AttributeType -is [Guid])
+    {
+        $changeSet.Add("BoundAttributeType", $ObjectType)
+    }
+    elseif ($AttributeType -is [String])
+    {
+        $changeSet.Add("BoundAttributeType", ('AttributeTypeDescription', 'Name', $AttributeType))
+    }
+    else
+    {
+        throw "Unsupported input format for -AttributeType"
+    }
+
+    New-FimImportObject -ObjectType BindingDescription -State Create -Uri $Uri -Changes $changeSet -SkipDuplicateCheck -ApplyNow 
 } 
 
 function New-FimSchemaAttribute
 {
+    [CmdletBinding()]
+    [OutputType([Guid])]
   	param
    	(
-   		$Name, 
-		$DisplayName = $Name, 
+        [parameter(Mandatory=$true)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+   		$Name,
+        [parameter(Mandatory=$false)]
+        [ValidateNotNullOrEmpty()]
+        [String]
+		$DisplayName = $Name,
+        [parameter(Mandatory=$true)]
+        [ValidateSet("Binary","Boolean","Datetime","Integer","String","Reference","Text")]
+        [String]
 		$DataType,
-		$Multivalued = 'false',
-        $Description = $Name,
+        [parameter(Mandatory=$false)]
+        [switch]
+		$Multivalued = $false,
+        [parameter(Mandatory=$false)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $Description,
         <#
 	    .PARAMETER Uri
 	    The Uniform Resource Identifier (URI) of themmsshortService. The following example shows how to set this parameter: -uri "http://localhost:5725"
 	    #>
+        [parameter(Mandatory=$false)]
+        [ValidateNotNullOrEmpty()]
 	    [String]
-	    $Uri = "http://localhost:5725"
-
+	    $Uri = "http://localhost:5725",
+        [parameter(Mandatory=$false)]
+        [Switch]
+        $PassThru = $false
    	)     
-    New-FimImportObject -ObjectType AttributeTypeDescription -State Create -Uri $uri -Changes @{
+
+    $changeSet= @{
 		DisplayName = $DisplayName
 		Name		= $Name
 		DataType	= $DataType
-		Multivalued	= $Multivalued
-        Description	= $Description
-	} -ApplyNow
+		Multivalued	= $Multivalued.ToBool()
+    }
+
+    if ($Description)
+    {
+        $changeSet.Add("Description", $Description)
+    }
+
+    New-FimImportObject -ObjectType AttributeTypeDescription -State Create -Uri $uri -Changes $changeSet -ApplyNow
+
+    if ($PassThru.ToBool())
+    {
+        Write-Output (Get-FimObjectID -ObjectType AttributeTypeDescription -AttributeName Name -AttributeValue $Name)
+    }
 } 
  
 function New-FimSchemaObjectType
 {
-  	param
-   	(
-   		$Name, 
-		$DisplayName = $Name,
-        $Description = $Name,
-        <#
-	    .PARAMETER Uri
-	    The Uniform Resource Identifier (URI) of themmsshortService. The following example shows how to set this parameter: -uri "http://localhost:5725"
-	    #>
-	    [String]
-	    $Uri = "http://localhost:5725"
-   	)             
-    New-FimImportObject -ObjectType ObjectTypeDescription -State Create -Uri $Uri -Changes @{
-		DisplayName = $DisplayName
-		Name		= $Name
-        Description	= $Description
-	} -ApplyNow             
+    [CmdletBinding()]
+    [OutputType([Guid])]
+    param
+    (
+    [parameter(Mandatory=$true)]
+    [ValidateNotNullOrEmpty()]
+    [string]
+    $Name, 
+    [parameter(Mandatory=$false)]
+    [ValidateNotNullOrEmpty()]
+    [String]
+    $DisplayName = $Name,
+    [parameter(Mandatory=$false)]
+    [ValidateNotNullOrEmpty()]
+    [string]
+    $Description,
+    <#
+    .PARAMETER Uri
+    The Uniform Resource Identifier (URI) of themmsshortService. The following example shows how to set this parameter: -uri "http://localhost:5725"
+    #>
+    [parameter(Mandatory=$false)]
+    [ValidateNotNullOrEmpty()]
+    [String]
+    $Uri = "http://localhost:5725",
+    [parameter(Mandatory=$false)]
+    [Switch]
+    $PassThru = $false    
+    )             
+
+    $changeSet = @{
+        DisplayName = $DisplayName
+        Name		= $Name
+    }
+
+    if ($Description)
+    {
+        $changeSet.Add("Description", $Description)
+    }
+    
+
+    New-FimImportObject -ObjectType ObjectTypeDescription -State Create -Uri $Uri -Changes $changeSet -ApplyNow   
+    
+    if ($PassThru.ToBool())
+    {
+        Write-Output (Get-FimObjectID -ObjectType ObjectTypeDescription -AttributeName Name -AttributeValue $Name)          
+    }
 } 
 
 function Get-FimSchemaBinding
@@ -1007,7 +1172,10 @@ function New-FimSet
 	    The Uniform Resource Identifier (URI) of themmsshortService. The following example shows how to set this parameter: -uri "http://localhost:5725"
 	    #>
 	    [String]
-	    $Uri = "http://localhost:5725"
+	    $Uri = "http://localhost:5725",
+        [parameter(Mandatory=$false)]
+        [Switch]
+        $PassThru = $true
    	)
 	$changeSet = @()
 	$changeSet += New-FimImportChange -Operation Replace -AttributeName "DisplayName" -AttributeValue $DisplayName
@@ -1035,7 +1203,10 @@ function New-FimSet
 	
     New-FimImportObject -ObjectType Set -State Create -Uri $Uri -Changes $changeSet -ApplyNow
 	
-	Write-Output (Get-FimObjectId -ObjectType Set -AttributeName DisplayName -AttributeValue $DisplayName)
+    if ($PassThru.ToBool())
+    {
+	    Write-Output (Get-FimObjectId -ObjectType Set -AttributeName DisplayName -AttributeValue $DisplayName)
+    }
  }
 
 function New-FimEmailTemplate
@@ -1083,7 +1254,10 @@ A GUID representing the ObjectID of the new email template
         [Parameter(Mandatory=$false)]
         [ValidateNotNull()]
         [String]
-        $Uri = "http://localhost:5725"        
+        $Uri = "http://localhost:5725",
+        [parameter(Mandatory=$false)]
+        [Switch]
+        $PassThru = $true
     )
     process
     {
@@ -1094,9 +1268,11 @@ A GUID representing the ObjectID of the new email template
 	        EmailBody         = $Body
         } -ApplyNow
 
-        $objectID = Get-FimObjectID -ObjectType EmailTemplate -AttributeName DisplayName -AttributeValue $DisplayName
-
-        Write-Output $objectID
+        if ($PassThru.ToBool())
+        {
+            $objectID = Get-FimObjectID -ObjectType EmailTemplate -AttributeName DisplayName -AttributeValue $DisplayName    
+            Write-Output $objectID
+        }
     }
 }
 
@@ -1148,7 +1324,10 @@ The URI to the FIM Service. Defaults to localhost.
         [Parameter(Mandatory=$false)]
         [ValidateNotNull()]
         [String]
-        $Uri = "http://localhost:5725"        
+        $Uri = "http://localhost:5725",
+        [parameter(Mandatory=$false)]
+        [Switch]
+        $PassThru = $true              
     )
     process
     {
@@ -1170,9 +1349,508 @@ The URI to the FIM Service. Defaults to localhost.
 
         New-FimImportObject -ObjectType WorkflowDefinition -State Create -Uri $Uri -Changes $changeSet -ApplyNow
 
-        $objectID = Get-FimObjectID -ObjectType WorkflowDefinition -AttributeName DisplayName -AttributeValue $DisplayName
-        Write-Output $objectID
+        if ($PassThru.ToBool())
+        {
+            $objectID = Get-FimObjectID -ObjectType WorkflowDefinition -AttributeName DisplayName -AttributeValue $DisplayName
+            Write-Output $objectID
+        }
+    }
+}
 
+function New-FimManagementPolicyRule
+{
+    [CmdletBinding()]
+    [OutputType([Guid])]
+    param
+    (
+        [Parameter(Mandatory=$true)]
+        [String]
+        $DisplayName,
+        [Parameter(Mandatory=$false)]
+        [String]
+        [ValidateNotNullOrEmpty()]
+        $Description,
+        [Parameter(Mandatory=$false)]
+        [Switch]
+        $Enabled = $true,
+
+        [Parameter(Mandatory=$true, ParameterSetName="TransitionIn")]
+        [Switch]
+        $TransitionIn,
+        [Parameter(Mandatory=$true, ParameterSetName="TransitionOut")]
+        [Switch]
+        $TransitionOut,
+        [Parameter(Mandatory=$true, ParameterSetName="TransitionIn")]        
+        [Parameter(ParameterSetName="TransitionOut")]
+        [ValidateScript({ ($_ -is [Guid]) -or ($_ -is [Array] -and $_.Length -eq 3) })]
+        $TransitionSet,
+        
+        [Parameter(Mandatory=$true, ParameterSetName="Request")]
+        [Switch]
+        $Request,
+        [Parameter(Mandatory=$true, ParameterSetName="Request")]
+        [ValidateSet('Read','Create','Modify','Delete','Add','Remove')]
+        [String[]]
+        $RequestType,
+        [Parameter(Mandatory=$false, ParameterSetName="Request")]
+        [Switch]
+        $GrantPermission = $false,
+        [Parameter(Mandatory=$false, ParameterSetName="Request")]        
+        [String[]]
+        $ResourceAttributeNames,
+
+        [Parameter(Mandatory=$false, ParameterSetName="Request")]        
+        [ValidateScript({ ($_ -is [Guid]) -or ($_ -is [Array] -and $_.Length -eq 3) })]        
+        $RequestorSet,
+
+        [Parameter(Mandatory=$false, ParameterSetName="Request")]        
+        [String]
+        [ValidateNotNullOrEmpty()]
+        $RelativeToResourceAttributeName,
+
+        [Parameter(Mandatory=$false, ParameterSetName="Request")]        
+        [ValidateScript({ ($_ -is [Guid]) -or ($_ -is [Array] -and $_.Length -eq 3) })]
+        $ResourceSetBeforeRequest,
+        [Parameter(Mandatory=$false, ParameterSetName="Request")]        
+        [ValidateScript({ ($_ -is [Guid]) -or ($_ -is [Array] -and $_.Length -eq 3) })]
+        $ResourceSetAfterRequest,
+
+        [Parameter(Mandatory=$false, ParameterSetName="Request")]        
+        [Parameter(ParameterSetName="TransitionIn")]
+        [Parameter(ParameterSetName="TransitionOut")]
+        [ValidateScript({ ($_ -is [Guid]) -or ($_ -is [Guid[]]) -or ($_ -is [Array] -and $_.Length -eq 3) -or ($_ -is [Array] -and $_[0].Length -eq 3) })]
+        $AuthenticationWorkflowDefinition,
+        [Parameter(Mandatory=$false, ParameterSetName="Request")]        
+        [Parameter(ParameterSetName="TransitionIn")]
+        [Parameter(ParameterSetName="TransitionOut")]
+        [ValidateScript({ ($_ -is [Guid]) -or ($_ -is [Guid[]]) -or ($_ -is [Array] -and $_.Length -eq 3) -or ($_ -is [Array] -and $_[0].Length -eq 3) })]
+        $AuthorizationWorkflowDefinition,
+        [Parameter(Mandatory=$false, ParameterSetName="Request")]        
+        [Parameter(ParameterSetName="TransitionIn")]
+        [Parameter(ParameterSetName="TransitionOut")]
+        [ValidateScript({ ($_ -is [Guid]) -or ($_ -is [Guid[]]) -or ($_ -is [Array] -and $_.Length -eq 3) -or ($_ -is [Array] -and $_[0].Length -eq 3) })]
+        $ActionWorkflowDefinition,
+
+        [Parameter(Mandatory=$false)]
+        [ValidateNotNull()]
+        [String]
+        $Uri = "http://localhost:5725",
+        [parameter(Mandatory=$false)]
+        [Switch]
+        $PassThru = $false           
+    )
+    begin
+    {
+        if ($PSCmdlet.ParameterSetName -eq "Request")
+        {
+            if ((
+                $RequestType.Contains("Read") -or 
+                $RequestType.Contains("Modify") -or
+                $RequestType.Contains("Add") -or
+                $RequestType.Contains("Remove") -or
+                $RequestType.Contains("Delete")
+                ) -eq $false)
+            {
+                if ($ResourceSetBeforeRequest)
+                {
+                    throw "-ResourceSetBeforeRequest is only necessary for Read, Modify, Add, Remove, and Delete requests"
+                }                
+
+            }
+            else
+            {
+                if (-not $ResourceSetBeforeRequest)
+                {
+                    throw "-ResourceSetBeforeRequest is required for Read, Modify, Add, Remove, and Delete requests"
+                }
+            }
+
+            if ((
+                $RequestType.Contains("Modify") -or
+                $RequestType.Contains("Add") -or
+                $RequestType.Contains("Remove") -or
+                $RequestType.Contains("Create")
+                ) -eq $false)
+            {
+                if ($ResourceSetAfterRequest)
+                {
+                    throw "-ResourceSetAfterRequest is only necessary for Create, Modify, Add, and Remove requests"
+                }                
+
+            }
+            else
+            {
+                if (-not $ResourceSetAfterRequest)
+                {
+                    throw "-ResourceSetAfterRequest is required for Create, Modify, Add, and Remove requests"
+                }
+            }
+
+            if (($RequestType.Length -eq 1) -and ($RequestType[0] -eq "Delete"))
+            {
+                if ($ResourceAttributeNames)
+                {
+                    throw "-ResourceAttributeNames is only necessary for  Create, Modify, Add, and Remove requests"
+                }
+            }
+            else
+            {
+                if (-not $ResourceAttributeNames)
+                {
+                    throw "-ResourceSetAfterRequest is required for Create, Modify, Add, and Remove requests"
+                }
+            }
+
+            if ($RequestorSet -and $RelativeToResourceAttributeName)
+            {
+                throw "-RequestorSet and -RelativeToResourceAttributeName cannot both be specified"
+            }
+
+            if (($RequestorSet -eq $null) -and ($RelativeToResourceAttributeName -eq $null))
+            {
+                throw "Specify either -RequestorSet or -RelativeToResourceAttributeName"
+            }
+        }
+
+        $changeSet = @()
+
+        $changeSet += New-FimImportChange -Operation Replace -AttributeName "DisplayName" -AttributeValue $DisplayName
+        #this is required on set transition MPRs as well as Request MPRs
+        #it will always be false on set transitions (as expected) do to parameter sets
+        $changeSet += New-FimImportChange -Operation Replace -AttributeName "GrantRight" -AttributeValue $GrantPermission.ToBool()
+
+        if ($Description)
+        {
+            $changeSet += New-FimImportChange -Operation Replace -AttributeName "Description" -AttributeValue $Description
+        }
+
+        $disableValue = (-not $Enabled.ToBool())        
+        $changeSet += New-FimImportChange -Operation Replace -AttributeName "Disabled" -AttributeValue $disableValue
+
+        if (($PSCmdlet.ParameterSetName -eq "TransitionIn") -or
+            ($PSCmdlet.ParameterSetName -eq "TransitionOut")
+           )
+        {
+            $changeSet += New-FimImportChange -Operation Replace -AttributeName "ManagementPolicyRuleType" -AttributeValue "SetTransition"
+            $changeSet += New-FimImportChange -Operation Replace -AttributeName "ActionType" -AttributeValue $PSCmdlet.ParameterSetName            
+
+            if ($PSCmdlet.ParameterSetName -eq "TransitionIn")
+            {
+                $changeSet += New-FimImportChange -Operation Replace -AttributeName "ResourceFinalSet" -AttributeValue $TransitionSet
+            }
+            elseif ($PSCmdlet.ParameterSetName -eq "TransitionOut")
+            {
+                $changeSet += New-FimImportChange -Operation Replace -AttributeName "ResourceCurrentSet" -AttributeValue $TransitionSet
+            }
+            else
+            {
+                throw "Unsupported parameter set name"
+            }
+        }
+
+        if ($PSCmdlet.ParameterSetName -eq "Request")
+        {
+            $changeSet += New-FimImportChange -Operation Replace -AttributeName "ManagementPolicyRuleType" -AttributeValue "Request"            
+
+            foreach ($type in $RequestType)
+            {
+                $changeSet += New-FimImportChange -Operation Add -AttributeName "ActionType" -AttributeValue $type
+            }
+
+            $actionParameters = $ResourceAttributeNames
+            if (($RequestType.Length -eq 1) -and ($RequestType[0] -eq "Delete"))
+            {
+                $actionParameters = @("*")
+            }
+
+            foreach ($param in $actionParameters)
+            {
+                $changeSet += New-FimImportChange -Operation Add -AttributeName "ActionParameter" -AttributeValue $param
+            }
+
+            if ($RelativeToResourceAttributeName)
+            {
+                $changeSet += New-FimImportChange -Operation Add -AttributeName "PrincipalRelativeToResource" -AttributeValue $RelativeToResourceAttributeName
+            }
+            elseif ($RequestorSet)
+            {
+                $changeSet += New-FimImportChange -Operation Add -AttributeName "PrincipalSet" -AttributeValue $RequestorSet
+            }
+            else
+            {
+                throw "Requestor not defined"
+            }
+
+            if ($ResourceSetBeforeRequest)
+            {
+                $changeSet += New-FimImportChange -Operation Replace -AttributeName "ResourceCurrentSet" -AttributeValue $ResourceSetBeforeRequest
+            }
+
+            if ($ResourceSetAfterRequest)
+            {
+                $changeSet += New-FimImportChange -Operation Replace -AttributeName "ResourceFinalSet" -AttributeValue $ResourceSetAfterRequest
+            }
+        }
+
+        if ($AuthenticationWorkflowDefinition)
+        {
+            if (($AuthenticationWorkflowDefinition -is [Guid]) -or
+                (($AuthenticationWorkflowDefinition -is [Array]) -and ($AuthenticationWorkflowDefinition.Length -eq 3))
+               )
+            {
+                $changeSet += New-FimImportChange -Operation Add -AttributeName "AuthenticationWorkflowDefinition" -AttributeValue $AuthenticationWorkflowDefinition
+            }
+            elseif (($AuthenticationWorkflowDefinition -is [Guid[]]) -or
+                    ($AuthenticationWorkflowDefinition -is [Array])
+                   )
+            {
+                foreach ($wf in $AuthenticationWorkflowDefinition)
+                {
+                    $changeSet += New-FimImportChange -Operation Add -AttributeName "AuthenticationWorkflowDefinition" -AttributeValue $wf
+                }
+            }
+            else
+            {
+                throw "Unsupported input for -AuthenticationWorkflowDefinition"
+            }
+        }
+
+        if ($AuthorizationWorkflowDefinition)
+        {
+            if (($AuthorizationWorkflowDefinition -is [Guid]) -or
+                (($AuthorizationWorkflowDefinition -is [Array]) -and ($AuthorizationWorkflowDefinition.Length -eq 3))
+               )
+            {
+                $changeSet += New-FimImportChange -Operation Add -AttributeName "AuthorizationWorkflowDefinition" -AttributeValue $AuthorizationWorkflowDefinition
+            }
+            elseif (($AuthorizationWorkflowDefinition -is [Guid[]]) -or
+                    ($AuthorizationWorkflowDefinition -is [Array])
+                   )
+            {
+                foreach ($wf in $AuthorizationWorkflowDefinition)
+                {
+                    $changeSet += New-FimImportChange -Operation Add -AttributeName "AuthorizationWorkflowDefinition" -AttributeValue $wf
+                }
+            }
+            else
+            {
+                throw "Unsupported input for -AuthorizationWorkflowDefinition"
+            }
+        }
+
+        if ($ActionWorkflowDefinition)
+        {
+            if (($ActionWorkflowDefinition -is [Guid]) -or
+                (($ActionWorkflowDefinition -is [Array]) -and ($ActionWorkflowDefinition.Length -eq 3))
+               )
+            {
+                $changeSet += New-FimImportChange -Operation Add -AttributeName "ActionWorkflowDefinition" -AttributeValue $ActionWorkflowDefinition
+            }
+            elseif (($ActionWorkflowDefinition -is [Guid[]]) -or
+                    ($ActionWorkflowDefinition -is [Array])
+                   )
+            {
+                foreach ($wf in $ActionWorkflowDefinition)
+                {
+                    $changeSet += New-FimImportChange -Operation Add -AttributeName "ActionWorkflowDefinition" -AttributeValue $wf
+                }
+            }
+            else
+            {
+                throw "Unsupported input for -ActionWorkflowDefinition"
+            }
+        }
+        
+        New-FimImportObject -ObjectType ManagementPolicyRule -State Create -Changes $changeSet -Uri $Uri -ApplyNow
+        
+        if ($PassThru.ToBool())
+        {
+            Write-Output (Get-FimObjectID -ObjectType ManagementPolicyRule -AttributeName DisplayName -AttributeValue $DisplayName)       
+        }
+    }
+}
+
+function New-FimSearchScope
+{
+    [CmdletBinding()]
+    [OutputType([Guid])]
+    param
+    (
+        [parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $DisplayName,
+        [parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $Description,
+        
+        [parameter(Mandatory = $true)]
+        [ValidateCount(1, [Int32]::MaxValue)]
+        [string[]]
+        $UsageKeywords,
+        [parameter(Mandatory = $true)]
+        [ValidateRange(0, [Int32]::MaxValue)]
+        [Int]
+        $Order,
+        
+        [parameter(Mandatory = $true)]
+        [ValidateCount(1, [Int32]::MaxValue)]
+        [string[]]
+        $AttributesToSearch,
+        [parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $Filter, ##
+        [parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $ResultType = "Resource",
+        [parameter(Mandatory = $false)]
+        [ValidateCount(1, [Int32]::MaxValue)]
+        [string[]]
+        $AttributesToDisplay,
+        [parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $RedirectingUrl,
+
+        [Parameter(Mandatory=$false)]
+        [ValidateNotNull()]
+        [String]
+        $Uri = "http://localhost:5725",
+        [parameter(Mandatory=$false)]
+        [Switch]
+        $PassThru = $false           
+    )
+    begin
+    {
+        $changeSet = @(
+            New-FimImportChange -Operation Replace -AttributeName "DisplayName" -AttributeValue $DisplayName
+            New-FimImportChange -Operation Replace -AttributeName "Order" -AttributeValue $Order
+            New-FimImportChange -Operation Replace -AttributeName "SearchScope" -AttributeValue $Filter
+            New-FimImportChange -Operation Replace -AttributeName "SearchScopeResultObjectType" -AttributeValue $ResultType            
+            New-FimImportChange -Operation Replace -AttributeName "SearchScopeColumn" -AttributeValue ($AttributesToDisplay -join ";")
+            New-FimImportChange -Operation Replace -AttributeName "IsConfigurationType" -AttributeValue $true
+        )
+
+        if ($RedirectingUrl)
+        {
+            $changeSet += New-FimImportChange -Operation Replace -AttributeName "SearchScopeTargetURL" -AttributeValue $RedirectingUrl
+        }
+
+        if ($Description)
+        {
+            $changeSet += New-FimImportChange -Operation Replace -AttributeName "Description" -AttributeValue $Description
+        }
+
+        foreach ($keyword in $UsageKeywords)
+        {
+            $changeSet += New-FimImportChange -Operation Add -AttributeName "UsageKeyword" -AttributeValue $keyword
+        }
+
+        foreach ($attr in $AttributesToSearch)
+        {
+            $changeSet += New-FimImportChange -Operation Add -AttributeName "SearchScopeContext" -AttributeValue $attr
+        }
+
+        New-FimImportObject -ObjectType SearchScopeConfiguration -State Create -Changes $changeSet -Uri $Uri -ApplyNow
+
+        if ($PassThru.ToBool())
+        {
+            Write-Output (Get-FimObjectID -ObjectType SearchScopeConfiguration -AttributeName DisplayName -AttributeValue $DisplayName)
+        }
+    }
+}
+
+function New-FimNavigationBarLink
+{
+    [CmdletBinding(DefaultParameterSetName="ChildLink")]
+    [OutputType([Guid])]
+    param
+    (
+        [parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $DisplayName,
+        [parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $Description, 
+        [parameter(Mandatory = $true)]
+        [ValidateCount(1, [Int32]::MaxValue)]
+        [string[]]
+        $UsageKeywords,
+
+        [parameter(Mandatory = $true, ParameterSetName = "TopLevel")]
+        [switch]
+        $TopLevel,
+        [parameter(Mandatory = $true)]
+        [Int]
+        $ParentOrder,
+        [parameter(Mandatory = $true, ParameterSetName = "ChildLink")]        
+        [Int]
+        $ChildOrder,
+        
+        [parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $NavigationUrl,
+        [parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $ResourceCountFilter,
+
+        [Parameter(Mandatory=$false)]
+        [ValidateNotNull()]
+        [String]
+        $Uri = "http://localhost:5725",
+        [parameter(Mandatory=$false)]
+        [Switch]
+        $PassThru = $false
+    )
+    begin
+    {
+        $order = -1
+
+        if ($PSCmdlet.ParameterSetName -eq "Toplevel")
+        {
+            $order = 0
+        }
+        else
+        {
+            $order = $ChildOrder
+        }
+
+        $changeSet = @(
+            New-FimImportChange -Operation Replace -AttributeName "DisplayName" -AttributeValue $DisplayName
+            New-FimImportChange -Operation Replace -AttributeName "NavigationUrl" -AttributeValue $NavigationUrl
+            New-FimImportChange -Operation Replace -AttributeName "Order" -AttributeValue $order
+            New-FimImportChange -Operation Replace -AttributeName "ParentOrder" -AttributeValue $ParentOrder
+            New-FimImportChange -Operation Replace -AttributeName "IsConfigurationType" -AttributeValue $true
+        )
+
+        if ($Description)
+        {
+            $changeSet += New-FimImportChange -Operation Replace -AttributeName "Description" -AttributeValue $Description
+        }
+
+        foreach ($keyword in $UsageKeywords)
+        {
+            $changeSet += New-FimImportChange -Operation Add -AttributeName "UsageKeyword" -AttributeValue $keyword
+        }
+
+        if ($ResourceCountFilter)
+        {
+            $changeSet += New-FimImportChange -Operation Replace -AttributeName "CountXPath" -AttributeValue $ResourceCountFilter
+        }
+
+        New-FimImportObject -ObjectType NavigationBarConfiguration -State Create -Uri $Uri -Changes $changeSet -ApplyNow
+
+        if ($PassThru.ToBool())
+        {
+            Write-Output (Get-FimObjectID -ObjectType NavigationBarConfiguration -AttributeName DisplayName -AttributeValue $DisplayName)
+        }
     }
 }
 

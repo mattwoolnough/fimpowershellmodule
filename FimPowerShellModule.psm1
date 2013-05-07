@@ -798,7 +798,7 @@ Function New-FimSynchronizationRule
         [ValidateRange(0,2)] 
 		[int]$FlowType, ##TODO: Figure out how to make this an enum
         [parameter(Mandatory=$false)]	
-        [ValidateRange(1, [Int32]::MaxValue)]
+        [ValidateRange(1, 1000)] ##TODO: Using 1000 instead of [Int32]::MaxValue because module import fails otherwise
         [int]
         $Precedence = 1,
         [parameter(Mandatory=$false)]
@@ -1686,16 +1686,16 @@ function New-FimSearchScope
         $Description,
         
         [parameter(Mandatory = $true)]
-        [ValidateCount(1, [Int32]::MaxValue)]
+        [ValidateCount(1, 100)]
         [string[]]
         $UsageKeywords,
         [parameter(Mandatory = $true)]
-        [ValidateRange(0, [Int32]::MaxValue)]
+        [ValidateRange(0, 100000)]
         [Int]
         $Order,
         
         [parameter(Mandatory = $true)]
-        [ValidateCount(1, [Int32]::MaxValue)]
+        [ValidateCount(1, 100)]
         [string[]]
         $AttributesToSearch,
         [parameter(Mandatory = $true)]
@@ -1707,7 +1707,7 @@ function New-FimSearchScope
         [string]
         $ResultType = "Resource",
         [parameter(Mandatory = $false)]
-        [ValidateCount(1, [Int32]::MaxValue)]
+        [ValidateCount(1, 100)]
         [string[]]
         $AttributesToDisplay,
         [parameter(Mandatory = $false)]
@@ -1778,7 +1778,7 @@ function New-FimNavigationBarLink
         [string]
         $Description, 
         [parameter(Mandatory = $true)]
-        [ValidateCount(1, [Int32]::MaxValue)]
+        [ValidateCount(1, 100)]
         [string[]]
         $UsageKeywords,
 

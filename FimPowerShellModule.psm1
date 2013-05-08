@@ -1039,7 +1039,7 @@ function New-FimSchemaBinding
 
     $changeSet = @{
         DisplayName	= $DisplayName 
-        Required	= $Required
+        Required	= $Required.ToBool()
     }
     
     if ($Description)
@@ -1126,11 +1126,11 @@ function New-FimSchemaAttribute
         $changeSet.Add("Description", $Description)
     }
 
-    New-FimImportObject -ObjectType AttributeTypeDescription -State Create -Uri $uri -Changes $changeSet -ApplyNow
+    New-FimImportObject -ObjectType AttributeTypeDescription -State Create -Uri $Uri -Changes $changeSet -ApplyNow
 
     if ($PassThru.ToBool())
     {
-        Write-Output (Get-FimObjectID -ObjectType AttributeTypeDescription -AttributeName Name -AttributeValue $Name)
+        Write-Output ([guid](Get-FimObjectID -ObjectType AttributeTypeDescription -AttributeName Name -AttributeValue $Name -Uri $Uri))
     }
 } 
  

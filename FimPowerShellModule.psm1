@@ -326,7 +326,7 @@ Function New-FimImportChange
 		[String]
         $AttributeName,
         
-        [parameter(Mandatory=$true)] 
+        [parameter(Mandatory=$false)] 
 		[ValidateScript({($_ -is [Array] -and $_.Count -eq 3) -or $_ -is [String] -or $_ -is [DateTime] -or $_ -is [Bool] -or $_ -is [Int] -or ($_ -is [Guid])})]
         $AttributeValue,
 		
@@ -394,6 +394,10 @@ Function New-FimImportChange
             {
 				$importChange.AttributeValue = $objectId              
             }            
+        }
+        else
+        {
+            Write-Verbose "Null or unsupported `$attributeValue provided"
         }
         $importChange
     }
@@ -1091,7 +1095,7 @@ function New-FimSchemaAttribute
         [String]
 		$DisplayName = $Name,
         [parameter(Mandatory=$true)]
-        [ValidateSet("Binary","Boolean","Datetime","Integer","String","Reference","Text")]
+        [ValidateSet("Binary","Boolean","DateTime","Integer","String","Reference","Text")]
         [String]
 		$DataType,
         [parameter(Mandatory=$false)]
@@ -1180,7 +1184,7 @@ function New-FimSchemaObjectType
     
     if ($PassThru.ToBool())
     {
-        Write-Output (Get-FimObjectID -ObjectType ObjectTypeDescription -AttributeName Name -AttributeValue $Name)          
+        Write-Output ([guid](Get-FimObjectID -ObjectType ObjectTypeDescription -AttributeName Name -AttributeValue $Name))
     }
 } 
 
@@ -1589,7 +1593,7 @@ function New-FimManagementPolicyRule
         $TransitionOut,
         [Parameter(Mandatory=$true, ParameterSetName="TransitionIn")]        
         [Parameter(ParameterSetName="TransitionOut")]
-        [ValidateScript({ ($_ -is [Guid]) -or ($_ -is [Array] -and $_.Length -eq 3) })]
+        #[ValidateScript({ ($_ -is [Guid]) -or ($_ -is [Array] -and $_.Length -eq 3) })]
         $TransitionSet,
         
         [Parameter(Mandatory=$true, ParameterSetName="Request")]
@@ -1607,7 +1611,7 @@ function New-FimManagementPolicyRule
         $ResourceAttributeNames,
 
         [Parameter(Mandatory=$false, ParameterSetName="Request")]        
-        [ValidateScript({ ($_ -is [Guid]) -or ($_ -is [Array] -and $_.Length -eq 3) })]        
+        #[ValidateScript({ ($_ -is [Guid]) -or ($_ -is [Array] -and $_.Length -eq 3) })]        
         $RequestorSet,
 
         [Parameter(Mandatory=$false, ParameterSetName="Request")]        
@@ -1616,26 +1620,26 @@ function New-FimManagementPolicyRule
         $RelativeToResourceAttributeName,
 
         [Parameter(Mandatory=$false, ParameterSetName="Request")]        
-        [ValidateScript({ ($_ -is [Guid]) -or ($_ -is [Array] -and $_.Length -eq 3) })]
+        #[ValidateScript({ ($_ -is [Guid]) -or ($_ -is [Array] -and $_.Length -eq 3) })]
         $ResourceSetBeforeRequest,
         [Parameter(Mandatory=$false, ParameterSetName="Request")]        
-        [ValidateScript({ ($_ -is [Guid]) -or ($_ -is [Array] -and $_.Length -eq 3) })]
+        #[ValidateScript({ ($_ -is [Guid]) -or ($_ -is [Array] -and $_.Length -eq 3) })]
         $ResourceSetAfterRequest,
 
         [Parameter(Mandatory=$false, ParameterSetName="Request")]        
         [Parameter(ParameterSetName="TransitionIn")]
         [Parameter(ParameterSetName="TransitionOut")]
-        [ValidateScript({ ($_ -is [Guid]) -or ($_ -is [Guid[]]) -or ($_ -is [Array] -and $_.Length -eq 3) -or ($_ -is [Array] -and $_[0].Length -eq 3) })]
+        #[ValidateScript({ ($_ -is [Guid]) -or ($_ -is [Guid[]]) -or ($_ -is [Array] -and $_.Length -eq 3) -or ($_ -is [Array] -and $_[0].Length -eq 3) })]
         $AuthenticationWorkflowDefinition,
         [Parameter(Mandatory=$false, ParameterSetName="Request")]        
         [Parameter(ParameterSetName="TransitionIn")]
         [Parameter(ParameterSetName="TransitionOut")]
-        [ValidateScript({ ($_ -is [Guid]) -or ($_ -is [Guid[]]) -or ($_ -is [Array] -and $_.Length -eq 3) -or ($_ -is [Array] -and $_[0].Length -eq 3) })]
+        #[ValidateScript({ ($_ -is [Guid]) -or ($_ -is [Guid[]]) -or ($_ -is [Array] -and $_.Length -eq 3) -or ($_ -is [Array] -and $_[0].Length -eq 3) })]
         $AuthorizationWorkflowDefinition,
         [Parameter(Mandatory=$false, ParameterSetName="Request")]        
         [Parameter(ParameterSetName="TransitionIn")]
         [Parameter(ParameterSetName="TransitionOut")]
-        [ValidateScript({ ($_ -is [Guid]) -or ($_ -is [Guid[]]) -or ($_ -is [Array] -and $_.Length -eq 3) -or ($_ -is [Array] -and $_[0].Length -eq 3) })]
+        #[ValidateScript({ ($_ -is [Guid]) -or ($_ -is [Guid[]]) -or ($_ -is [Array] -and $_.Length -eq 3) -or ($_ -is [Array] -and $_[0].Length -eq 3) })]
         $ActionWorkflowDefinition,
 
         [Parameter(Mandatory=$false)]

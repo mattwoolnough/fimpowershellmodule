@@ -870,7 +870,7 @@ Function New-FimSynchronizationRule
         [parameter(Mandatory=$false)]
 		$RelationshipCriteria = @{},
         [parameter(Mandatory=$false)]
-        [string]
+        [string[]]
         $SynchronizationRuleParameters,
         [parameter(Mandatory=$false)]
         [Switch]
@@ -932,7 +932,10 @@ Function New-FimSynchronizationRule
    
     if ($SynchronizationRuleParameters)
     {
-        $srImportObject.Changes += New-FimImportChange -AttributeName SynchronizationRuleParameters -Operation Add -AttributeValue $SynchronizationRuleParameters
+    	foreach($wfp in $SynchronizationRuleParameters)
+    	{
+    		$srImportObject.Changes += New-FimImportChange -AttributeName SynchronizationRuleParameters -Operation Add -AttributeValue $wfp
+    	}
     }
         
     if ($ExternalSystemScopingFilter)

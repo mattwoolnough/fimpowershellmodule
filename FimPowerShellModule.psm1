@@ -863,6 +863,9 @@ Function New-FimSynchronizationRule
         [ValidateRange(1, 1000)] ##TODO: Using 1000 instead of [Int32]::MaxValue because module import fails otherwise
         [int]
         $Precedence = 1,
+        [parameter(Mandatory=$false)] # Thanks to Aneesh Varghese at NZ Ministry of Social Development who pointed out 
+        [Alias("Dependency")]         # we need to include dependency as well
+        $DependencyRef, 
         [parameter(Mandatory=$false)]
         [Alias("ConnectedSystemScope")]
         [string[]]
@@ -877,6 +880,9 @@ Function New-FimSynchronizationRule
         $msidmOutboundIsFilterBased = $false,
         [parameter(Mandatory=$false)]
         $msidmOutboundScopingFilters = $null,
+        [parameter(Mandatory=$false)]
+        [Alias("ExistenceTest")]   ## Added by Aneesh Varghese, need to include ExistenceTest flow rules as well
+        $ExistenceTestFlowRules =  @(),
         [parameter(Mandatory=$false)]
         [Alias("PersistentFlow")]
         [string[]]
@@ -932,9 +938,9 @@ Function New-FimSynchronizationRule
    
     if ($SynchronizationRuleParameters)
     {
-    	foreach($wfp in $SynchronizationRuleParameters)
+    	foreach($srp in $SynchronizationRuleParameters)
     	{
-    		$srImportObject.Changes += New-FimImportChange -AttributeName SynchronizationRuleParameters -Operation Add -AttributeValue $wfp
+    		$srImportObject.Changes += New-FimImportChange -AttributeName SynchronizationRuleParameters -Operation Add -AttributeValue $srp
     	}
     }
         
@@ -944,7 +950,18 @@ Function New-FimSynchronizationRule
         {
             $srImportObject.Changes += New-FimImportChange -AttributeName ConnectedSystemScope -Operation Add -AttributeValue $filter
         }
-    }  
+    }
+
+    ## Added by Aneesh Varghese, need to include Dependency attribute
+    if($DependencyRef)
+    {
+        $srImportObject.Changes += New-FimImportChange -AttributeName Dependency -Operation Add -AttributeValue $DependencyRef
+    }
+    
+    ## Added by Aneesh Varghese, need to include ExistenceTest flow rules as well
+    $ExistenceTestFlowRules | ForEach-Object {
+        $srImportObject.Changes += New-FimImportChange -AttributeName ExistenceTest -Operation Add -AttributeValue $_
+    }
 	
 	$PersistentFlowRules | ForEach-Object {
 		$srImportObject.Changes += New-FimImportChange -AttributeName PersistentFlow -Operation Add -AttributeValue $_

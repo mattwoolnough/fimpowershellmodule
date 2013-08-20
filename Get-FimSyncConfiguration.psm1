@@ -273,7 +273,11 @@ Function Get-ExportAttributeFlow
 					{
 						$allowNulls = -not $allowNulls
 					}
-		            
+
+                    [string]$initialFlowOnly = $null
+                    [string]$isExistenceTest = $null
+		         
+   
 		            if ($exportFlow.'direct-mapping' -ne $null)
 		            {
                         ###
@@ -289,14 +293,17 @@ Function Get-ExportAttributeFlow
                         }
 		                
 		                $rule = New-Object PSObject
-		                $rule | Add-Member -MemberType noteproperty -name 'RuleType' -value 'DIRECT'
-		                $rule | Add-Member -MemberType noteproperty -name 'MAName' -value $maName                
-		                $rule | Add-Member -MemberType noteproperty -name 'MVObjectType' -value $mvObjectType
-		                $rule | Add-Member -MemberType noteproperty -name 'MVAttribute' -value $srcAttribute
-		                $rule | Add-Member -MemberType noteproperty -name 'CDObjectType' -value $cdObjectType
-		                $rule | Add-Member -MemberType noteproperty -name 'CDAttribute' -value $cdAttribute
-						$rule | Add-Member -MemberType noteproperty -name 'ScriptContext' -value $null
-						$rule | Add-Member -MemberType noteproperty -name 'AllowNulls' -value $allowNulls
+		                $rule | Add-Member -MemberType NoteProperty -Name 'RuleType' -Value 'DIRECT'
+		                $rule | Add-Member -MemberType NoteProperty -Name 'MAName' -Value $maName                
+		                $rule | Add-Member -MemberType NoteProperty -Name 'MVObjectType' -Value $mvObjectType
+		                $rule | Add-Member -MemberType NoteProperty -Name 'MVAttribute' -Value $srcAttribute
+		                $rule | Add-Member -MemberType NoteProperty -Name 'CDObjectType' -Value $cdObjectType
+		                $rule | Add-Member -MemberType NoteProperty -Name 'CDAttribute' -Value $cdAttribute
+						$rule | Add-Member -MemberType NoteProperty -Name 'ScriptContext' -Value $null
+						$rule | Add-Member -MemberType NoteProperty -Name 'AllowNulls' -Value $allowNulls
+                        $rule | Add-Member -MemberType NoteProperty -Name 'InitialFlowOnly' -Value $initialFlowOnly
+                        $rule | Add-Member -MemberType NoteProperty -Name 'IsExistenceTest' -Value $isExistenceTest
+
 		                
 		                $rules += $rule
 		            }
@@ -324,47 +331,60 @@ Function Get-ExportAttributeFlow
                         }
 		                    
 		                $rule = New-Object PSObject
-		                $rule | Add-Member -MemberType noteproperty -name 'RuleType' -value 'SCRIPTED'
-		                $rule | Add-Member -MemberType noteproperty -name 'MAName' -value $maName
-						$rule | Add-Member -MemberType noteproperty -name 'MVObjectType' -value $mvObjectType
-		                $rule | Add-Member -MemberType noteproperty -name 'MVAttribute' -value $srcAttributes
-		                $rule | Add-Member -MemberType noteproperty -name 'CDObjectType' -value $cdObjectType
-		                $rule | Add-Member -MemberType noteproperty -name 'CDAttribute' -value $cdAttribute	
-		                $rule | Add-Member -MemberType noteproperty -name 'ScriptContext' -value $scriptContext
-						$rule | Add-Member -MemberType noteproperty -name 'AllowNulls' -value $allowNulls
+		                $rule | Add-Member -MemberType NoteProperty -Name 'RuleType' -Value 'SCRIPTED'
+		                $rule | Add-Member -MemberType NoteProperty -Name 'MAName' -Value $maName
+						$rule | Add-Member -MemberType NoteProperty -Name 'MVObjectType' -Value $mvObjectType
+		                $rule | Add-Member -MemberType NoteProperty -Name 'MVAttribute' -Value $srcAttributes
+		                $rule | Add-Member -MemberType NoteProperty -Name 'CDObjectType' -Value $cdObjectType
+		                $rule | Add-Member -MemberType NoteProperty -Name 'CDAttribute' -Value $cdAttribute	
+		                $rule | Add-Member -MemberType NoteProperty -Name 'ScriptContext' -Value $scriptContext
+						$rule | Add-Member -MemberType NoteProperty -Name 'AllowNulls' -Value $allowNulls
+                        $rule | Add-Member -MemberType NoteProperty -Name 'InitialFlowOnly' -Value $initialFlowOnly
+                        $rule | Add-Member -MemberType NoteProperty -Name 'IsExistenceTest' -Value $isExistenceTest
 		                                
 		                $rules += $rule                        
 		            }
 					elseif ($exportFlow.'sync-rule-mapping' -ne $null)
 					{
 						$srcAttribute = $exportFlow.'sync-rule-mapping'.'src-attribute'
+                        $initialFlowOnly = $exportFlow.'sync-rule-mapping'.'initial-flow-only'
+                        $isExistenceTest = $exportFlow.'sync-rule-mapping'.'is-existence-test'
+
 						if($exportFlow.'sync-rule-mapping'.'mapping-type' -eq 'direct')
 						{
 							$rule = New-Object PSObject
-							$rule | Add-Member -MemberType noteproperty -name 'RuleType' -value 'OSR-Direct'
-							$rule | Add-Member -MemberType noteproperty -name 'MAName' -value $maName
-							$rule | Add-Member -MemberType noteproperty -name 'MVObjectType' -value $mvObjectType
-							$rule | Add-Member -MemberType noteproperty -name 'MVAttribute' -value $srcAttribute
-							$rule | Add-Member -MemberType noteproperty -name 'CDObjectType' -value $cdObjectType
-							$rule | Add-Member -MemberType noteproperty -name 'CDAttribute' -value $cdAttribute														
-							$rule | Add-Member -MemberType noteproperty -name 'ScriptContext' -value $null
-							$rule | Add-Member -MemberType noteproperty -name 'AllowNulls' -value $allowNulls
+							$rule | Add-Member -MemberType NoteProperty -Name 'RuleType' -Value 'OSR-Direct'
+							$rule | Add-Member -MemberType NoteProperty -Name 'MAName' -Value $maName
+							$rule | Add-Member -MemberType NoteProperty -Name 'MVObjectType' -Value $mvObjectType
+							$rule | Add-Member -MemberType NoteProperty -Name 'MVAttribute' -Value $srcAttribute
+							$rule | Add-Member -MemberType NoteProperty -Name 'CDObjectType' -Value $cdObjectType
+							$rule | Add-Member -MemberType NoteProperty -Name 'CDAttribute' -Value $cdAttribute														
+							$rule | Add-Member -MemberType NoteProperty -Name 'ScriptContext' -Value $null
+							$rule | Add-Member -MemberType NoteProperty -Name 'AllowNulls' -Value $allowNulls
+                            $rule | Add-Member -MemberType NoteProperty -Name 'InitialFlowOnly' -Value $initialFlowOnly
+                            $rule | Add-Member -MemberType NoteProperty -Name 'IsExistenceTest' -Value $isExistenceTest
 											
 							$rules += $rule             
 						}
 						elseif ($exportFlow.'sync-rule-mapping'.'mapping-type' -eq 'expression')
 						{
 							$scriptContext = $exportFlow.'sync-rule-mapping'.'sync-rule-value'.'export-flow'.InnerXml
-							$srcAttribute = $exportFlow.'sync-rule-mapping'.'sync-rule-value'.'export-flow'.dest
+							$cdAttribute  = $exportFlow.'sync-rule-mapping'.'sync-rule-value'.'export-flow'.dest
+
 							$rule = New-Object PSObject
-							$rule | Add-Member -MemberType noteproperty -name 'RuleType' -value 'OSR-Expression'
-							$rule | Add-Member -MemberType noteproperty -name 'MAName' -value $maName
-							$rule | Add-Member -MemberType noteproperty -name 'MVObjectType' -value $mvObjectType
-							$rule | Add-Member -MemberType noteproperty -name 'MVAttribute' -value $srcAttribute
-							$rule | Add-Member -MemberType noteproperty -name 'CDObjectType' -value $cdObjectType
-							$rule | Add-Member -MemberType noteproperty -name 'CDAttribute' -value $cdAttribute														
-							$rule | Add-Member -MemberType noteproperty -name 'ScriptContext' -value $scriptContext
-							$rule | Add-Member -MemberType noteproperty -name 'AllowNulls' -value $allowNulls
+							$rule | Add-Member -MemberType NoteProperty -Name 'RuleType' -Value 'OSR-Expression'
+							$rule | Add-Member -MemberType NoteProperty -Name 'MAName' -Value $maName
+							$rule | Add-Member -MemberType NoteProperty -Name 'MVObjectType' -Value $mvObjectType
+							$rule | Add-Member -MemberType NoteProperty -Name 'MVAttribute' -Value $srcAttribute
+							$rule | Add-Member -MemberType NoteProperty -Name 'CDObjectType' -Value $cdObjectType
+							$rule | Add-Member -MemberType NoteProperty -Name 'CDAttribute' -Value $cdAttribute														
+							$rule | Add-Member -MemberType NoteProperty -Name 'ScriptContext' -Value $scriptContext
+							$rule | Add-Member -MemberType NoteProperty -Name 'AllowNulls' -Value $allowNulls
+                            $rule | Add-Member -MemberType NoteProperty -Name 'InitialFlowOnly' -Value $initialFlowOnly
+                            $rule | Add-Member -MemberType NoteProperty -Name 'IsExistenceTest' -Value $isExistenceTest
+                            $rule | Add-Member -MemberType NoteProperty -Name 'InitialFlowOnly' -Value $initialFlowOnly
+                            $rule | Add-Member -MemberType NoteProperty -Name 'IsExistenceTest' -Value $isExistenceTest
+
 											
 							$rules += $rule             
 						}
@@ -440,7 +460,11 @@ Function Join-ImportToExportAttributeFlow
 		                'EAFTargetMA'          = $eafRule.'MAName'
 		                'EAFCDObjectType'      = $eafRule.'CDObjectType'
 		                'EAFRuleType'          = $eafRule.'RuleType'
-		                'EAFScriptContext'     = $eafRule.'ScriptContext'
+    		            'EAFScriptContext'     = $eafRule.'ScriptContext'
+                        'EAFAllowNulls'        = $eafRule.'AllowNulls'
+                        'EAFInitialFlowOnly'   = $eafRule.'InitialFlowOnly'
+                        'EAFIsExistenceTest'   = $eafRule.'IsExistenceTest'
+
 		            }
 		            
 		            $e2eFlowRules += New-Object PSObject -Property $e2eFlowRuleProperties 
@@ -470,6 +494,10 @@ Function Join-ImportToExportAttributeFlow
 		                'EAFCDObjectType'      = $null
 		                'EAFRuleType'          = $null
 		                'EAFScriptContext'     = $null
+                        'EAFAllowNulls'        = $null
+                        'EAFInitialFlowOnly'   = $null
+                        'EAFIsExistenceTest'   = $null
+
 		            }
 		            
 		       $e2eFlowRules += New-Object PSObject -Property $e2eFlowRuleProperties 
@@ -492,6 +520,9 @@ Function Join-ImportToExportAttributeFlow
 		'EAFCDAttribute',`
 		'EAFRuleType',`
 		'EAFScriptContext'`
+        'EAFAllowNulls',`
+        'EAFInitialFlowOnly',`
+        'EAFIsExistenceTest'
 	}
 }
 
@@ -535,20 +566,44 @@ function Get-MetaverseSchema
 		{
 			switch($mvAttributeType.syntax)
 			{
-				'1.3.6.1.4.1.1466.115.121.1.12' {$syntax = 'Reference';break}
-				'1.3.6.1.4.1.1466.115.121.1.15' {$syntax = 'String';break}
-				'1.3.6.1.4.1.1466.115.121.1.5' {$syntax = 'Binary';break}
-				'1.3.6.1.4.1.1466.115.121.1.27' {$syntax = 'Number';break}
-				'1.3.6.1.4.1.1466.115.121.1.17' {$syntax = 'Boolean';break}		
+				'1.3.6.1.4.1.1466.115.121.1.12' 
+                {
+                    $syntax = 'Reference';
+                    break
+                }
+				'1.3.6.1.4.1.1466.115.121.1.15' 
+                {
+                    $syntax = 'String';
+                    break
+                }
+				'1.3.6.1.4.1.1466.115.121.1.5' 
+                {
+                    $syntax = 'Binary';
+                    break
+                }
+				'1.3.6.1.4.1.1466.115.121.1.27' 
+                {
+                    $syntax = 'Number';
+                    break
+                }
+				'1.3.6.1.4.1.1466.115.121.1.7' 
+                {
+                    $syntax = 'Boolean';
+                    break
+                }
+                default 
+                {
+                    $syntax = "Unknown"; 
+                    break
+                }
 			}
 		
 			$attribute = New-Object PSObject
-			#$attribute | Add-Member -MemberType noteproperty -name 'ObjectType' -Value $null
-			$attribute | Add-Member -MemberType noteproperty -name 'AttributeName' -value $mvAttributeType.name
-			$attribute | Add-Member -MemberType noteproperty -name 'Syntax' -value $syntax
-            $attribute | Add-Member -MemberType noteproperty -name 'Indexable' -value ($mvAttributeType.'indexable' -eq 'true')
-			$attribute | Add-Member -MemberType noteproperty -name 'Indexed' -value ($mvAttributeType.indexed -ne $null)
-			$attribute | Add-Member -MemberType noteproperty -name 'MultiValued' -value ($mvAttributeType.'single-value' -ne 'true' -or $mvAttributeType.'single-value' -eq $null)
+			$attribute | Add-Member -MemberType NoteProperty -Name 'AttributeName' -Value $mvAttributeType.name
+			$attribute | Add-Member -MemberType NoteProperty -Name 'Syntax' -Value $syntax
+            $attribute | Add-Member -MemberType NoteProperty -Name 'Indexable' -Value ($mvAttributeType.'indexable' -eq 'true')
+			$attribute | Add-Member -MemberType NoteProperty -Name 'Indexed' -Value ($mvAttributeType.indexed -ne $null)
+			$attribute | Add-Member -MemberType NoteProperty -Name 'MultiValued' -Value ($mvAttributeType.'single-value' -ne 'true' -or $mvAttributeType.'single-value' -eq $null)
 			$attributes += $attribute
 		}
 		

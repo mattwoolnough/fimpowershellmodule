@@ -871,9 +871,6 @@ Function New-FimSynchronizationRule
         [parameter(Mandatory=$false)]
 		$RelationshipCriteria = @{},
         [parameter(Mandatory=$false)]
-        [string]
-        $SynchronizationRuleParameters,
-        [parameter(Mandatory=$false)]
         [Switch]
         [Alias("msidmOutboundIsFilterBased")]
         $OutboundFilterBased = $false,

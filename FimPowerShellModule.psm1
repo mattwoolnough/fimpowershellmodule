@@ -1802,6 +1802,7 @@ function New-FimManagementPolicyRule
         {
             $changeSet += New-FimImportChange -Operation Replace -AttributeName "ManagementPolicyRuleType" -AttributeValue "SetTransition"
             $changeSet += New-FimImportChange -Operation Replace -AttributeName "ActionType" -AttributeValue $PSCmdlet.ParameterSetName            
+            $changeSet += New-FimImportChange -Operation Replace -AttributeName "ActionParameter" -AttributeValue "*"
 
             if ($PSCmdlet.ParameterSetName -eq "TransitionIn")
             {

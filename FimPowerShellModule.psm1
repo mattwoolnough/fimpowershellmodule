@@ -235,10 +235,14 @@ function New-FimImportObject
         ###
         if (($State -ieq 'Put' -or $State -ieq 'Delete') -and $importObject.AnchorPairs.Count -eq 1)
         {
-			$targetID = Get-FimObjectID -ObjectType $ObjectType -Uri $Uri -AttributeName @($importObject.AnchorPairs)[0].AttributeName -AttributeValue @($importObject.AnchorPairs)[0].AttributeValue
-            
-			$importObject.TargetObjectIdentifier = $targetID
-        }     
+			$errorVariable = $null
+		    $targetID = Get-FimObjectID -ObjectType $ObjectType -Uri $Uri -AttributeName @($importObject.AnchorPairs)[0].AttributeName -AttributeValue @($importObject.AnchorPairs)[0].AttributeValue -ErrorAction SilentlyContinue -ErrorVariable errorVariable
+
+            if ($errorVariable)
+            {
+                Write-Error $errorVariable[1]
+            }        
+		}     
        
         ###
         ### Handle Duplicate Values on a Put request

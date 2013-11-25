@@ -235,14 +235,17 @@ function New-FimImportObject
         ###
         if (($State -ieq 'Put' -or $State -ieq 'Delete') -and $importObject.AnchorPairs.Count -eq 1)
         {
-			$errorVariable = $null
+            $errorVariable = $null
 		    $targetID = Get-FimObjectID -ObjectType $ObjectType -Uri $Uri -AttributeName @($importObject.AnchorPairs)[0].AttributeName -AttributeValue @($importObject.AnchorPairs)[0].AttributeValue -ErrorAction SilentlyContinue -ErrorVariable errorVariable
 
             if ($errorVariable)
             {
                 Write-Error $errorVariable[1]
-            }        
-		}     
+                return
+            }
+            
+			$importObject.TargetObjectIdentifier = $targetID
+        }     
        
         ###
         ### Handle Duplicate Values on a Put request
@@ -1719,14 +1722,13 @@ function New-FimManagementPolicyRule
             if ((
                 $RequestType.Contains("Read") -or 
                 $RequestType.Contains("Modify") -or
-                $RequestType.Contains("Add") -or
                 $RequestType.Contains("Remove") -or
                 $RequestType.Contains("Delete")
                 ) -eq $false)
             {
                 if ($ResourceSetBeforeRequest)
                 {
-                    throw "-ResourceSetBeforeRequest is only necessary for Read, Modify, Add, Remove, and Delete requests"
+                    throw "-ResourceSetBeforeRequest is only necessary for Read, Modify, Remove, and Delete requests"
                 }                
 
             }
@@ -1734,7 +1736,7 @@ function New-FimManagementPolicyRule
             {
                 if (-not $ResourceSetBeforeRequest)
                 {
-                    throw "-ResourceSetBeforeRequest is required for Read, Modify, Add, Remove, and Delete requests"
+                    throw "-ResourceSetBeforeRequest is required for Read, Modify, Remove, and Delete requests"
                 }
             }
 

@@ -171,6 +171,10 @@ Function Get-ImportAttributeFlow
 						{
 							$scriptContext = $importFlow.'sync-rule-mapping'.'sync-rule-value'.'import-flow'.InnerXml
 						}
+						elseif ($importFlow.'sync-rule-mapping'.'mapping-type' -ieq 'constant')
+						{
+							$scriptContext = $importFlow.'sync-rule-mapping'.'sync-rule-value'
+						}
 		                
 		                $rule = New-Object PSObject
 		                $rule | Add-Member -MemberType noteproperty -name 'RuleType' -value $ruleType
@@ -363,7 +367,6 @@ Function Get-ExportAttributeFlow
 							$rule | Add-Member -MemberType NoteProperty -Name 'AllowNulls' -Value $allowNulls
                             $rule | Add-Member -MemberType NoteProperty -Name 'InitialFlowOnly' -Value $initialFlowOnly
                             $rule | Add-Member -MemberType NoteProperty -Name 'IsExistenceTest' -Value $isExistenceTest
-                            $rule | Add-Member -MemberType NoteProperty -Name 'SyncRuleValue' -Value $null
 											
 							$rules += $rule             
 						}
@@ -383,7 +386,6 @@ Function Get-ExportAttributeFlow
 							$rule | Add-Member -MemberType NoteProperty -Name 'AllowNulls' -Value $allowNulls
                             $rule | Add-Member -MemberType NoteProperty -Name 'InitialFlowOnly' -Value $initialFlowOnly
                             $rule | Add-Member -MemberType NoteProperty -Name 'IsExistenceTest' -Value $isExistenceTest
-                            $rule | Add-Member -MemberType NoteProperty -Name 'SyncRuleValue' -Value $null
 											
 							$rules += $rule             
 						}
@@ -400,7 +402,7 @@ Function Get-ExportAttributeFlow
 							$rule | Add-Member -MemberType NoteProperty -Name 'AllowNulls' -Value $false
                             $rule | Add-Member -MemberType NoteProperty -Name 'InitialFlowOnly' -Value $initialFlowOnly
                             $rule | Add-Member -MemberType NoteProperty -Name 'IsExistenceTest' -Value $isExistenceTest   
-                            $rule | Add-Member -MemberType NoteProperty -Name 'SyncRuleValue' -Value ($exportFlow.'sync-rule-mapping'.'sync-rule-value')
+                            $rule | Add-Member -MemberType NoteProperty -Name 'ScriptContext' -Value ($exportFlow.'sync-rule-mapping'.'sync-rule-value')
 											
 							$rules += $rule             
                         }

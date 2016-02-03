@@ -2131,6 +2131,86 @@ function New-FimNavigationBarLink
     }
 }
 
+<#
+    .SYNOPSIS 
+   Writes a tree structure of the synchronization rule hierarchy to the console
+
+    .PARAMETER Direction
+    The type of synchronization rule to filter on
+
+    .OUTPUTS
+    Text representing the rule hierachy
+
+#>
+function Get-FimSynchronizationRuleDependencyTree
+{
+    param(
+        [ValidateSet('Inbound','Outbound', 'InboundAndOutbound')]
+        $Direction,
+	    [String]
+	    $Uri = 'http://localhost:5725'
+    )
+
+    $flowType = $null    
+    if ($Direction -eq 'Inbound')
+    {
+        $flowType = 0
+    }
+    elseif ($Direction -eq 'Outbound')
+    {
+        $flowType = 1
+    }
+    elseif ($Direction -eq 'InboundAndOutbound')
+    {
+        $flowType = 2
+    }
+    else
+    {
+        throw "Unsupported value for `$Direction"
+    }
+
+    $syncRules = Export-FIMConfig -OnlyBaseResources -CustomConfig "/SynchronizationRule[FlowType='$flowType']" -Uri $Uri | Convert-FimExportToPSObject    
+
+    foreach ($rule in ($syncRules | Sort-Object -Property 'DisplayName'))
+    {
+        if ($rule.Dependency -eq $null)
+        {
+            InternalPrintSyncRule -Rule $rule -RuleSet $syncRules -Level 0
+        }
+    }    
+}
+
+<#
+.SYNOPSIS
+    This is an internal function that supports Write-FimSynchronizationRuleDependencyTree. It is not intended for consumption
+
+.NOTES
+    This is exported due to legacy compatibility issues with the module.
+#>
+function InternalPrintSyncRule
+{
+    param(
+    
+        $Rule,
+        $RuleSet,
+        [int]
+        $Level
+    )   
+
+    if ($Level -eq 0)
+    {
+        Write-Host $Rule.DisplayName
+    }
+    else
+    {
+        Write-Host ('|' + '_' * $Level + $Rule.DisplayName)
+    }
+
+    foreach ($dependent in ($RuleSet | Where {$_.Dependency -eq $Rule.ObjectID} | Sort-Object -Property 'DisplayName')){
+        PrintSyncRule -Rule $dependent -RuleSet $RuleSet -Level ($Level + 1)
+    }
+}
+
  # backwards compat for the old names of these functions
  New-Alias -Name Add-FimSchemaBinding -Value New-FimSchemaBinding
  New-Alias -Name Add-FimSchemaAttribute -Value New-FimSchemaAttribute

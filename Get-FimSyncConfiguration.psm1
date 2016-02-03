@@ -363,6 +363,7 @@ Function Get-ExportAttributeFlow
 							$rule | Add-Member -MemberType NoteProperty -Name 'AllowNulls' -Value $allowNulls
                             $rule | Add-Member -MemberType NoteProperty -Name 'InitialFlowOnly' -Value $initialFlowOnly
                             $rule | Add-Member -MemberType NoteProperty -Name 'IsExistenceTest' -Value $isExistenceTest
+                            $rule | Add-Member -MemberType NoteProperty -Name 'SyncRuleValue' -Value $null
 											
 							$rules += $rule             
 						}
@@ -382,15 +383,30 @@ Function Get-ExportAttributeFlow
 							$rule | Add-Member -MemberType NoteProperty -Name 'AllowNulls' -Value $allowNulls
                             $rule | Add-Member -MemberType NoteProperty -Name 'InitialFlowOnly' -Value $initialFlowOnly
                             $rule | Add-Member -MemberType NoteProperty -Name 'IsExistenceTest' -Value $isExistenceTest
-                            $rule | Add-Member -MemberType NoteProperty -Name 'InitialFlowOnly' -Value $initialFlowOnly
-                            $rule | Add-Member -MemberType NoteProperty -Name 'IsExistenceTest' -Value $isExistenceTest
-
+                            $rule | Add-Member -MemberType NoteProperty -Name 'SyncRuleValue' -Value $null
 											
 							$rules += $rule             
 						}
+                        elseif ($exportFlow.'sync-rule-mapping'.'mapping-type' -eq 'constant')
+                        {
+							$rule = New-Object PSObject
+							$rule | Add-Member -MemberType NoteProperty -Name 'RuleType' -Value 'OSR-Constant'
+							$rule | Add-Member -MemberType NoteProperty -Name 'MAName' -Value $maName
+							$rule | Add-Member -MemberType NoteProperty -Name 'MVObjectType' -Value $mvObjectType
+							$rule | Add-Member -MemberType NoteProperty -Name 'MVAttribute' -Value $null
+							$rule | Add-Member -MemberType NoteProperty -Name 'CDObjectType' -Value $cdObjectType
+							$rule | Add-Member -MemberType NoteProperty -Name 'CDAttribute' -Value $cdAttribute														
+							$rule | Add-Member -MemberType NoteProperty -Name 'ScriptContext' -Value $null
+							$rule | Add-Member -MemberType NoteProperty -Name 'AllowNulls' -Value $false
+                            $rule | Add-Member -MemberType NoteProperty -Name 'InitialFlowOnly' -Value $initialFlowOnly
+                            $rule | Add-Member -MemberType NoteProperty -Name 'IsExistenceTest' -Value $isExistenceTest   
+                            $rule | Add-Member -MemberType NoteProperty -Name 'SyncRuleValue' -Value ($exportFlow.'sync-rule-mapping'.'sync-rule-value')
+											
+							$rules += $rule             
+                        }
 						else
 						{
-							throw "Unsupported Export Flow type"
+							throw 'Unsupported Export Flow type'
 						}
 			           
 					}

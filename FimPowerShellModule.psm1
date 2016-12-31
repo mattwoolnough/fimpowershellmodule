@@ -1717,14 +1717,18 @@ function New-FimManagementPolicyRule
     )
     begin
     {
+		# Create a table of request types we received
+		$requestTypeSet = New-Object -TypeName "System.Collections.Generic.HashSet[string]" -ArgumentList ([StringComparer]::OrdinalIgnoreCase)
+		$RequestType | % { [void]($requestTypeSet.Add($_)) }
+
         if ($PSCmdlet.ParameterSetName -eq "Request")
         {
             if ((
-                $RequestType.Contains("Read") -or 
-                $RequestType.Contains("Modify") -or
-                $RequestType.Contains("Remove") -or
-                $RequestType.Contains("Add") -or
-                $RequestType.Contains("Delete")
+                $requestTypeSet.Contains("Read") -or 
+                $requestTypeSet.Contains("Modify") -or
+                $requestTypeSet.Contains("Remove") -or
+                $requestTypeSet.Contains("Add") -or
+                $requestTypeSet.Contains("Delete")
                 ) -eq $false)
             {
                 if ($ResourceSetBeforeRequest)
@@ -1742,10 +1746,10 @@ function New-FimManagementPolicyRule
             }
 
             if ((
-                $RequestType.Contains("Modify") -or
-                $RequestType.Contains("Add") -or
-                $RequestType.Contains("Remove") -or
-                $RequestType.Contains("Create")
+                $requestTypeSet.Contains("Modify") -or
+                $requestTypeSet.Contains("Add") -or
+                $requestTypeSet.Contains("Remove") -or
+                $requestTypeSet.Contains("Create")
                 ) -eq $false)
             {
                 if ($ResourceSetAfterRequest)
@@ -1762,7 +1766,7 @@ function New-FimManagementPolicyRule
                 }
             }
 
-            if (($RequestType.Length -eq 1) -and ($RequestType[0] -eq "Delete"))
+            if (($requestTypeSet.Count -eq 1) -and ($requestTypeSet.Contains("Delete")))
             {
                 if ($ResourceAttributeNames)
                 {
@@ -1829,13 +1833,13 @@ function New-FimManagementPolicyRule
         {
             $changeSet += New-FimImportChange -Operation Replace -AttributeName "ManagementPolicyRuleType" -AttributeValue "Request"            
 
-            foreach ($type in $RequestType)
+            foreach ($type in $requestTypeSet)
             {
                 $changeSet += New-FimImportChange -Operation Add -AttributeName "ActionType" -AttributeValue $type
             }
 
             $actionParameters = $ResourceAttributeNames
-            if (($RequestType.Length -eq 1) -and ($RequestType[0] -eq "Delete"))
+            if (($requestTypeSet.Count -eq 1) -and ($requestTypeSet.Contains("Delete")))
             {
                 $actionParameters = @("*")
             }

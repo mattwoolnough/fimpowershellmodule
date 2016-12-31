@@ -338,7 +338,7 @@ Function New-FimImportChange
         $AttributeValue,
 		
 		[parameter(Mandatory=$true)]
-		[ValidateSet(“Add”, “Replace”, “Delete”, "None")]
+		[ValidateSet("Add", "Replace", "Delete", "None")]
         $Operation,
 		
 		[parameter(Mandatory=$false)]  

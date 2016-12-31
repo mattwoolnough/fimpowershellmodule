@@ -1873,10 +1873,11 @@ function New-FimManagementPolicyRule
             }
         }
 
+
         if ($AuthenticationWorkflowDefinition)
         {
-            if (($AuthenticationWorkflowDefinition -is [Guid]) -or
-                (($AuthenticationWorkflowDefinition -is [Array]) -and ($AuthenticationWorkflowDefinition.Length -eq 3))
+			if (($AuthenticationWorkflowDefinition -is [Guid]) -or
+                (($AuthenticationWorkflowDefinition -is [Array]) -and ($AuthenticationWorkflowDefinition.Length -eq 3) -and (-not (($AuthenticationWorkflowDefinition[0] -is [Guid]) -and ($AuthenticationWorkflowDefinition[1] -is [Guid]) -and ($AuthenticationWorkflowDefinition[2] -is [Guid]))))
                )
             {
                 $changeSet += New-FimImportChange -Operation Add -AttributeName "AuthenticationWorkflowDefinition" -AttributeValue $AuthenticationWorkflowDefinition
@@ -1898,8 +1899,8 @@ function New-FimManagementPolicyRule
 
         if ($AuthorizationWorkflowDefinition)
         {
-            if (($AuthorizationWorkflowDefinition -is [Guid]) -or
-                (($AuthorizationWorkflowDefinition -is [Array]) -and ($AuthorizationWorkflowDefinition.Length -eq 3))
+			if (($AuthorizationWorkflowDefinition -is [Guid]) -or
+                (($AuthorizationWorkflowDefinition -is [Array]) -and ($AuthorizationWorkflowDefinition.Length -eq 3) -and (-not (($AuthorizationWorkflowDefinition[0] -is [Guid]) -and ($AuthorizationWorkflowDefinition[1] -is [Guid]) -and ($AuthorizationWorkflowDefinition[2] -is [Guid]))))
                )
             {
                 $changeSet += New-FimImportChange -Operation Add -AttributeName "AuthorizationWorkflowDefinition" -AttributeValue $AuthorizationWorkflowDefinition
@@ -1921,8 +1922,8 @@ function New-FimManagementPolicyRule
 
         if ($ActionWorkflowDefinition)
         {
-            if (($ActionWorkflowDefinition -is [Guid]) -or
-                (($ActionWorkflowDefinition -is [Array]) -and ($ActionWorkflowDefinition.Length -eq 3))
+			if (($ActionWorkflowDefinition -is [Guid]) -or
+                (($ActionWorkflowDefinition -is [Array]) -and ($ActionWorkflowDefinition.Length -eq 3) -and (-not (($ActionWorkflowDefinition[0] -is [Guid]) -and ($ActionWorkflowDefinition[1] -is [Guid]) -and ($ActionWorkflowDefinition[2] -is [Guid]))))
                )
             {
                 $changeSet += New-FimImportChange -Operation Add -AttributeName "ActionWorkflowDefinition" -AttributeValue $ActionWorkflowDefinition

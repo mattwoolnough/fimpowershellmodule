@@ -1581,31 +1581,31 @@ function New-FimEmailTemplate
 
 function New-FimWorkflowDefinition
 {
-<#
-.SYNOPSIS 
-Creates a new workflow definition object inFIM
+  <#
+      .SYNOPSIS 
+      Creates a new workflow definition object inFIM
 
-.PARAMETER DisplayName
-The DisplayName value to set for the workflow.
+      .PARAMETER DisplayName
+      The DisplayName value to set for the workflow.
 
-.PARAMETER Description
-The description of the workflow.
+      .PARAMETER Description
+      The description of the workflow.
 
-.PARAMETER RequestPhase
-The type of workflow to create (Action, Authorization, or Authentication)
+      .PARAMETER RequestPhase
+      The type of workflow to create (Action, Authorization, or Authentication)
 
-.PARAMETER RunOnPolicyUpdate
-Whether or not to enable ROPU for an action workflow
+      .PARAMETER RunOnPolicyUpdate
+      Whether or not to enable ROPU for an action workflow
 
-.PARAMETER Xoml
-The workflow definition XOML data
+      .PARAMETER Xoml
+      The workflow definition XOML data
 
-.PARAMETER FromFile
-When specified, provide a file system path to -Xoml to load the data from the file system
+      .PARAMETER FromFile
+      When specified, provide a file system path to -Xoml to load the data from the file system
 
-.PARAMETER Uri
-The URI to the FIM Service. Defaults to localhost. 
-#>
+      .PARAMETER Uri
+      The URI to the FIM Service. Defaults to localhost. 
+  #>
     [CmdletBinding()]
     [OutputType([Guid])]
     param
@@ -1627,9 +1627,13 @@ The URI to the FIM Service. Defaults to localhost.
         [Parameter(Mandatory=$true)]
         [String]
         $Xoml,
-		    [Parameter(Mandatory=$false)]
-		    [Switch]
-		    $FromFile,
+        # if present, these are passed to a [String]::Format() call against the XOML
+        [Parameter(Mandatory=$false)]
+        [String[]]
+        $XomlTokens,
+        [Parameter(Mandatory=$false)]
+        [Switch]
+        $FromFile,
         [Parameter(Mandatory=$false)]
         [ValidateNotNull()]
         [String]
@@ -1640,7 +1644,7 @@ The URI to the FIM Service. Defaults to localhost.
     )
     process
     {
-		  $xomlData = $Xoml
+      $xomlData = $Xoml
 
       if ($FromFile.ToBool())
       {
@@ -1653,10 +1657,15 @@ The URI to the FIM Service. Defaults to localhost.
           $xomlData = [System.String]::Join([Environment]::NewLine,(Get-Content $Xoml))
       }
 
+      if ($XomlTokens -ne $null -and $XomlTokens.Count -gt 0)
+      {
+        $xomlData = $xomlData -f $XomlTokens
+      }
+
         $changeSet = @{
-	        DisplayName 			= $DisplayName	        
-	        RequestPhase 			= $RequestPhase	        
-	        XOML 					    = $xomlData
+          DisplayName 			= $DisplayName	        
+          RequestPhase 			= $RequestPhase	        
+          XOML 					    = $xomlData
         }
 
         if ([String]::IsNullOrEmpty($Description) -eq $false)
